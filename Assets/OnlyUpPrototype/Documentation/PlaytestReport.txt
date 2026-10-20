@@ -1,0 +1,32 @@
+PASS Spawn settles on start platform
+PASS Idle state
+PASS Forward movement distance=1.4
+PASS Run state
+PASS Diagonal speed normalized distance=1.4
+PASS Jump rises and enters Jump state height=1.156
+PASS Landing returns to Idle
+PASS Apex-to-landing fall report
+PASS Moving landing returns to Run
+PASS Camera-relative W at 90 degrees
+PASS Lower pitch clamp
+PASS Upper pitch clamp
+PASS Camera retracts in front of wall distance=1.658012
+PASS Significant fall distance=5.904188
+PASS Void respawn returns to stage start
+PASS Void fall marked separately from landing
+PASS Route jump to Platform_01 at height=0.6
+PASS Route jump to Platform_02 at height=1.2
+PASS Route jump to Platform_03 at height=1.8
+PASS Route jump to Platform_04 at height=2.4
+PASS Route jump to Platform_05 at height=3
+PASS Route jump to Platform_06 at height=3.6
+PASS Route jump to Platform_07 at height=4.2
+PASS Route jump to Platform_08 at height=4.8
+PASS Route jump to Platform_09 at height=5.4
+PASS Route jump to Platform_10 at height=6
+PASS Route jump to Platform_11 at height=6.6
+PASS Route jump to Platform_12 at height=7.2
+PASS Route jump to GoalPlatform at height=7.8
+PASS All ascending platforms traversable with actual CharacterController movement
+PASS Goal detection
+Failures: 0

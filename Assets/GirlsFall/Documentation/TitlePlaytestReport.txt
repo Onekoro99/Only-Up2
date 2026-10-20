@@ -1,0 +1,49 @@
+PASS Title has four bound uGUI buttons
+PASS Continue disabled with no save
+PASS Title does not create progress
+PASS Canvas reference 1920x1080
+PASS Mouse/navigation EventSystem present
+PASS Japanese glyph in packaged font
+PASS Options button opens panel
+PASS Master slider applies
+PASS BGM and SE independent output volumes
+PASS Options persisted independently
+PASS Options Back closes panel
+PASS New game requires confirmation
+PASS No cancels new game without progress write
+PASS Scene loading disables repeat activation
+PASS Confirmed new game creates initial slot in gameplay
+PASS New game retains options
+PASS Mouse sensitivity applied to gameplay camera
+PASS Continue enabled after autosave
+PASS Ground position restored after scene reload
+PASS Stage/PV/time metadata restored
+PASS Jump resumes airborne with upward velocity
+PASS Fall remains airborne and descending after reload
+PASS Fall height and start height restored without high-point rollback
+PASS Horizontal momentum persisted through scene reload
+PASS Motor restores exact horizontal velocity before normal air-control braking
+PASS Restored player can land
+PASS Landing persists grounded state
+PASS Stage completion autosaved
+PASS Critical fall snapshot survives new manager/process simulation
+PASS Old queued grounded snapshot cannot overwrite newer fall
+PASS Torn pending write retains last durable falling state
+PASS Complete newer transaction selected after interrupted replacement
+PASS Corruption returns error without crashing
+PASS Continue displays corruption error and stays on title
+PASS Declining overwrite preserves existing save bytes
+PASS Confirmed new game resets progress metadata
+PASS Confirmed overwrite preserves settings
+PASS Responsive artwork/menu design root bound
+PASS Artwork preserves aspect ratio with fit layout
+PASS Artwork import retains original pixel aspect ratio
+PASS Actual GameView resolution 1280x720 matches 1280x720
+PASS All menu buttons inside screen after resolution request 1280x720 (Editor actual 1280x720)
+PASS Actual GameView resolution 1024x768 matches 1024x768
+PASS All menu buttons inside screen after resolution request 1024x768 (Editor actual 1024x768)
+PASS Actual GameView resolution 2560x1080 matches 2560x1080
+PASS All menu buttons inside screen after resolution request 2560x1080 (Editor actual 2560x1080)
+PASS Title quit exits Editor Play mode
+PASS Title quit does not write progress
+Failures: 0
