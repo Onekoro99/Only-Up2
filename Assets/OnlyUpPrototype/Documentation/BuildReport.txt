@@ -1,0 +1,4 @@
+Unity 6000.3.25f1
+Scene: Assets/OnlyUpPrototype/Scenes/OnlyUp_Prototype.unity
+Original kiyota, controller and clips retained.
+12 ascending platforms + goal; old movement disabled only in prototype.

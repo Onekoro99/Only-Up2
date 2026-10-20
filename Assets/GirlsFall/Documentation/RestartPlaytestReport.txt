@@ -1,0 +1,13 @@
+PASS Editor quit saves latest runtime position/velocity for case 0
+PASS Options restored across Editor stop/new Play for case 0
+PASS New Play session restores grounded snapshot exactly
+PASS Controller continues correct physical state for case 0
+PASS Editor quit saves latest runtime position/velocity for case 1
+PASS Options restored across Editor stop/new Play for case 1
+PASS New Play session restores jumping snapshot exactly
+PASS Controller continues correct physical state for case 1
+PASS Editor quit saves latest runtime position/velocity for case 2
+PASS Options restored across Editor stop/new Play for case 2
+PASS New Play session restores falling snapshot exactly
+PASS Controller continues correct physical state for case 2
+Failures: 0
