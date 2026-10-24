@@ -1,0 +1,182 @@
+using System;
+using System.IO;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
+using CandyKingdom.Shortcake;
+namespace CandyKingdom.Shortcake.Editor {
+public static class ShortcakeMountainBuilder {
+ public const string Root="Assets/CandyKingdom/Shortcake";
+ public const string ScenePath="Assets/CandyKingdom/Scenes/CandyTown_ShortcakeRoutes.unity";
+ public const string Source="Assets/CandyKingdom/Scenes/CandyTown_DreamWorld.unity";
+ const string Art="Assets/CandyKingdom/ArtUpgrade";
+ static Material cookieGround,sponge,cream,pink,choc,mint,berry,seed,blue;
+ static Mesh rounded,disc,whip,strawberry;
+ static Transform owner,mountain,course,castle;
+ static ShortcakeRouteLayout layout;
+ static System.Random random;
+ static void Folder(string p){if(AssetDatabase.IsValidFolder(p))return;var parent=Path.GetDirectoryName(p).Replace('\\','/');Folder(parent);AssetDatabase.CreateFolder(parent,Path.GetFileName(p));}
+ static GameObject Group(string name,Transform parent,Vector3 worldPosition){var g=new GameObject(name);g.transform.SetParent(parent,false);g.transform.position=worldPosition;return g;}
+ static Material Mat(string name){return AssetDatabase.LoadAssetAtPath<Material>(Art+"/Materials/"+name+".mat");}
+ static Mesh Store(string name,List<Vector3> v,List<int> t,List<Vector2> uv){
+  string path=Root+"/Meshes/"+name+".asset";var m=AssetDatabase.LoadAssetAtPath<Mesh>(path);if(!m){m=new Mesh();m.name=name;AssetDatabase.CreateAsset(m,path);}else m.Clear();
+  m.indexFormat=UnityEngine.Rendering.IndexFormat.UInt32;m.SetVertices(v);m.SetTriangles(t,0);m.SetUVs(0,uv);m.RecalculateNormals();m.RecalculateBounds();EditorUtility.SetDirty(m);AssetDatabase.SaveAssetIfDirty(m);return m;
+ }
+ static GameObject MeshObject(string name,Mesh mesh,Vector3 worldPosition,Vector3 scale,Material mat,Transform parent,bool solid=false){
+  var g=Group(name,parent,worldPosition);g.transform.localScale=scale;g.AddComponent<MeshFilter>().sharedMesh=mesh;g.AddComponent<MeshRenderer>().sharedMaterial=mat;if(solid)g.AddComponent<MeshCollider>().sharedMesh=mesh;g.isStatic=true;return g;
+ }
+ static GameObject Box(string name,Vector3 p,Vector3 scale,Material mat,Transform parent,bool solid=false){return MeshObject(name,rounded,p,scale,mat,parent,solid);}
+ static GameObject Ball(string name,Vector3 p,Vector3 scale,Material mat,Transform parent){
+  var g=GameObject.CreatePrimitive(PrimitiveType.Sphere);g.name=name;g.transform.SetParent(parent,false);g.transform.position=p;g.transform.localScale=scale;g.GetComponent<Renderer>().sharedMaterial=mat;UnityEngine.Object.DestroyImmediate(g.GetComponent<Collider>());g.isStatic=true;return g;
+ }
+ static GameObject Disk(string name,Vector3 top,float diameter,float height,Material mat,Transform parent,bool solid=true){return MeshObject(name,disc,top-Vector3.up*height*.5f,new Vector3(diameter,height,diameter),mat,parent,solid);}
+ static void Label(string text,Vector3 p,float size,Transform parent){var g=Group("Sign_"+text,parent,p);g.transform.rotation=Quaternion.Euler(90,0,0);var tx=g.AddComponent<TextMesh>();tx.text=text;tx.fontSize=64;tx.characterSize=size/6;tx.anchor=TextAnchor.MiddleCenter;tx.color=new Color(.48f,.22f,.33f);}
+ static SweetRouteNode Node(string name,Vector3 p,bool jump,float launch=2.03f){return new SweetRouteNode(Group(name,course,p).transform,jump,launch);}
+ static void Plate(List<SweetRouteNode> list,string name,Vector3 p,float d,int variant=1,float launch=2.03f){
+  var prefab=AssetDatabase.LoadAssetAtPath<GameObject>(Art+"/Prefabs/SweetPlatform_"+variant+".prefab");
+  var g=(GameObject)PrefabUtility.InstantiatePrefab(prefab);g.name=name;g.transform.SetParent(course,true);g.transform.position=p;g.transform.localScale=new Vector3(d/3f,1,d/3f);
+  list.Add(new SweetRouteNode(g.transform,true,launch));
+ }
+ static Mesh TierMesh(string name,float radius,float height){
+  var v=new List<Vector3>();var t=new List<int>();var uv=new List<Vector2>();int rings=12,sides=96;
+  for(int j=0;j<=rings;j++){float u=j/(float)rings;float profile=u<.0834f?u/.0834f:u>.9166f?(1-u)/.0834f:1;
+   float y=u<.0834f?0:u>.9166f?height:height*(u-.0834f)/.8332f;
+   for(int k=0;k<=sides;k++){float a=k*Mathf.PI*2/sides;float r=radius*profile*(1+.014f*Mathf.Sin(a*5)+.009f*Mathf.Cos(a*9+1));v.Add(new Vector3(Mathf.Cos(a)*r,y,Mathf.Sin(a)*r));uv.Add(j==0||j>=11?new Vector2(Mathf.Cos(a)*profile*.5f+.5f,Mathf.Sin(a)*profile*.5f+.5f):new Vector2(k/12f,u));}}
+  for(int j=0;j<rings;j++)for(int k=0;k<sides;k++){int a=j*(sides+1)+k,b=a+sides+1;t.Add(a);t.Add(b);t.Add(a+1);t.Add(a+1);t.Add(b);t.Add(b+1);}return Store(name,v,t,uv);
+ }
+ static void Tier(string name,Vector3 bottom,float radius,float height){
+  var g=Group(name,mountain,bottom);MeshObject("SpongeLayers",TierMesh(name+"_Sponge",radius,height),bottom,Vector3.one,sponge,g.transform,true);
+  Disk("VanillaFilling",bottom+Vector3.up*(height*.46f),radius*2.015f,.60f,cream,g.transform,false);
+  Disk("StrawberryJam",bottom+Vector3.up*(height*.55f),radius*2.018f,.16f,pink,g.transform,false);
+  Disk("WalkableCreamTerrace",bottom+Vector3.up*height,radius*2,.32f,cream,g.transform,true);
+  var v=new List<Vector3>();var t=new List<int>();var uv=new List<Vector2>();int sides=128;
+  for(int j=0;j<3;j++)for(int k=0;k<=sides;k++){float a=k*Mathf.PI*2/sides;float r=radius*(1+.014f*Mathf.Sin(a*5)+.009f*Mathf.Cos(a*9+1))+.035f;float drop=.28f+.55f*Mathf.Pow(.5f+.5f*Mathf.Sin(a*11+.8f),4);v.Add(new Vector3(Mathf.Cos(a)*r,height-(j==0?0:j==1?.16f:drop),Mathf.Sin(a)*r));uv.Add(new Vector2(k/(float)sides,j*.5f));}
+  for(int j=0;j<2;j++)for(int k=0;k<sides;k++){int a=j*(sides+1)+k,b=a+sides+1;t.Add(a);t.Add(a+1);t.Add(b);t.Add(a+1);t.Add(b+1);t.Add(b);}
+  MeshObject("DrippingWhippedCream",Store(name+"_Drips",v,t,uv),bottom,Vector3.one,cream,g.transform);
+  int pearls=Mathf.RoundToInt(radius*13);for(int k=0;k<pearls;k++){float a=k*Mathf.PI*2/pearls;Ball("RoundedIcingEdge",bottom+new Vector3(Mathf.Cos(a)*radius,height-.06f,Mathf.Sin(a)*radius),new Vector3(.54f,.27f,.54f),cream,g.transform);}
+ }
+ static Mesh BerryMesh(){
+  var v=new List<Vector3>();var t=new List<int>();var uv=new List<Vector2>();
+  for(int j=0;j<=24;j++){float u=j/24f;float r=.5f*Mathf.Pow(Mathf.Max(0,Mathf.Sin(u*Mathf.PI)),.65f)*(.65f+.35f*u);for(int k=0;k<=48;k++){float a=k*Mathf.PI*2/48;v.Add(new Vector3(Mathf.Cos(a)*r,u,Mathf.Sin(a)*r));uv.Add(new Vector2(k/48f,u));}}
+  for(int j=0;j<24;j++)for(int k=0;k<48;k++){int a=j*49+k,b=a+49;t.Add(a);t.Add(b);t.Add(a+1);t.Add(a+1);t.Add(b);t.Add(b+1);}return Store("Strawberry",v,t,uv);
+ }
+ static void Strawberry(string name,Vector3 p,float size,Transform parent,bool solid){
+  var g=MeshObject(name,strawberry,p,Vector3.one*size,berry,parent,solid);
+  for(int j=1;j<=6;j++){float u=j/8f,r=.5f*Mathf.Pow(Mathf.Max(0,Mathf.Sin(u*Mathf.PI)),.65f)*(.65f+.35f*u);for(int k=0;k<9;k++){float a=k*Mathf.PI*2/9+j*.45f;var s=Ball("StrawberrySeed",p+new Vector3(Mathf.Cos(a)*(r+.008f),u,Mathf.Sin(a)*(r+.008f))*size,new Vector3(.022f,.045f,.022f)*size,seed,g.transform);}}
+  for(int k=0;k<5;k++){var leaf=Box("MintLeaf",p+new Vector3(Mathf.Cos(k*1.256f)*.12f,.96f,Mathf.Sin(k*1.256f)*.12f)*size,new Vector3(.10f,.025f,.33f)*size,mint,g.transform);leaf.transform.rotation=Quaternion.Euler(0,k*72,0);}
+ }
+ static void BerryStep(List<SweetRouteNode> nodes,string name,Vector3 p,float d){
+  var g=Group(name,course,p);MeshObject("StrawberrySponge",strawberry,p-Vector3.up*.65f,new Vector3(d,.65f,d),berry,g.transform,true);Disk("FlatCreamLanding",p,d,.13f,cream,g.transform,true);
+  for(int k=0;k<14;k++){float a=k*Mathf.PI/7;Ball("SugarSeed",p+new Vector3(Mathf.Cos(a)*d*.47f,-.24f,Mathf.Sin(a)*d*.47f),new Vector3(.035f,.07f,.035f),seed,g.transform);}
+  nodes.Add(new SweetRouteNode(g.transform,true));
+ }
+ static void Ramp(string name,Vector3 a,Vector3 b,float width,Material mat,Transform parent){
+  var direction=Vector3.ProjectOnPlane(b-a,Vector3.up).normalized;var side=Vector3.Cross(Vector3.up,direction)*width*.5f;
+  var v=new List<Vector3>{a-side,a+side,b+side,b-side,a-side-Vector3.up*.30f,a+side-Vector3.up*.30f,b+side-Vector3.up*.30f,b-side-Vector3.up*.30f};
+  int[] tri={0,3,1,1,3,2,4,5,7,5,6,7,0,1,4,1,5,4,1,2,5,2,6,5,2,3,6,3,7,6,3,0,7,0,4,7};
+  var uv=new List<Vector2>();foreach(var p in v)uv.Add(new Vector2(p.x*.5f,p.z*.5f));MeshObject(name,Store(name,v,new List<int>(tri),uv),Vector3.zero,Vector3.one,mat,parent,true);
+ }
+ static void GroundExtension(){
+  var v=new List<Vector3>();var uv=new List<Vector2>();var t=new List<int>();int nx=56,nz=30;
+  for(int j=0;j<=nz;j++)for(int i=0;i<=nx;i++){float x=-56+i*2,z=104+j*2;float y=CandyKingdom.ArtUpgrade.Editor.CandyWorldArtBuilder.GroundHeight(x,z);v.Add(new Vector3(x,y,z));uv.Add(new Vector2(i*.12f,(z+30)*.06f));}
+  for(int j=0;j<nz;j++)for(int i=0;i<nx;i++){int a=j*(nx+1)+i;t.Add(a);t.Add(a+nx+1);t.Add(a+1);t.Add(a+1);t.Add(a+nx+1);t.Add(a+nx+2);}
+  MeshObject("CastleApproach_LowestGround",Store("LowestGroundExtension",v,t,uv),Vector3.zero,Vector3.one,cookieGround,owner,true);
+ }
+ static void Backup(string scene){
+  string stamp=DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
+  if(!AssetDatabase.CopyAsset(scene,Root+"/Backups/Map_"+stamp+".unity"))throw new Exception("Scene backup failed.");
+  File.Copy("Assets/CandyKingdom/Shortcake/Editor/ShortcakeMountainBuilder.cs",Root+"/Backups/ShortcakeMountainBuilder_"+stamp+".cs.txt");
+  foreach(var path in Directory.GetFiles("Assets/CandyKingdom/ArtUpgrade/Editor","*.cs"))File.Copy(path,Root+"/Backups/"+Path.GetFileName(path)+"_"+stamp+".txt");
+ }
+ 
+ [MenuItem("Tools/Candy Kingdom/Rebuild Shortcake Visual Batches")]
+ public static void Optimize(){
+  if(EditorApplication.isPlayingOrWillChangePlaymode||SceneManager.GetActiveScene().path!=ScenePath)throw new Exception("Open two-route scene in Edit mode.");
+  var root=GameObject.Find("ShortcakeAdventureGenerated").transform;var previous=root.Find("BatchedShortcakeVisuals");if(previous)UnityEngine.Object.DestroyImmediate(previous.gameObject);
+  var groups=new Dictionary<Material,List<CombineInstance>>();var originals=new List<MeshRenderer>();
+  foreach(var mf in root.GetComponentsInChildren<MeshFilter>()){var mr=mf.GetComponent<MeshRenderer>();if(!mr||!mf.sharedMesh||mr.sharedMaterials.Length!=1||!mr.sharedMaterial)continue;var material=mr.sharedMaterial;if(!groups.ContainsKey(material))groups[material]=new List<CombineInstance>();groups[material].Add(new CombineInstance{mesh=mf.sharedMesh,transform=root.worldToLocalMatrix*mf.transform.localToWorldMatrix});originals.Add(mr);}
+  var combined=Group("BatchedShortcakeVisuals",root,Vector3.zero);
+  foreach(var pair in groups){string path=Root+"/Meshes/RouteBatch_"+pair.Key.name+".asset";var mesh=AssetDatabase.LoadAssetAtPath<Mesh>(path);if(!mesh){mesh=new Mesh();mesh.name="RouteBatch_"+pair.Key.name;AssetDatabase.CreateAsset(mesh,path);}else mesh.Clear();mesh.indexFormat=UnityEngine.Rendering.IndexFormat.UInt32;mesh.CombineMeshes(pair.Value.ToArray(),true,true,false);mesh.RecalculateBounds();EditorUtility.SetDirty(mesh);AssetDatabase.SaveAssetIfDirty(mesh);MeshObject(pair.Key.name,mesh,Vector3.zero,Vector3.one,pair.Key,combined.transform);}
+  foreach(var renderer in originals)renderer.enabled=false;
+  EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
+ }
+[MenuItem("Tools/Candy Kingdom/Create Shortcake Two Route Scene")]
+ public static void Create(){
+  if(EditorApplication.isPlayingOrWillChangePlaymode||SceneManager.GetActiveScene().isDirty)throw new Exception("Stop Play and save current scene first.");
+  if(AssetDatabase.LoadMainAssetAtPath(ScenePath))throw new Exception("Two-route scene exists. Open it and use Regenerate Shortcake Routes.");
+  foreach(var p in new[]{"Meshes","Backups","Prefabs","Materials"})Folder(Root+"/"+p);
+  Backup(Source);
+  var files=new List<string>(Directory.GetFiles("Assets/Characters","*",SearchOption.AllDirectories));files.AddRange(Directory.GetFiles("Assets/OnlyUpPrototype/Runtime","*.cs"));files.AddRange(Directory.GetFiles("Assets/CandyKingdom/Motion/Runtime","*.cs"));files.AddRange(Directory.GetFiles("Assets/CandyKingdom/Motion/Clips","*.anim"));files.Add("Assets/CandyKingdom/Motion/Controllers/CandyMotion_Test.controller");files.Add("ProjectSettings/InputManager.asset");files.Add(Source);
+  var hashes=new Dictionary<string,string>();using(var sha=System.Security.Cryptography.SHA256.Create())foreach(var f in files)hashes[f]=BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(f)));File.WriteAllText(Root+"/Backups/ProtectedHashes.json",Newtonsoft.Json.JsonConvert.SerializeObject(hashes));
+  if(!AssetDatabase.CopyAsset(Source,ScenePath))throw new Exception("Scene copy failed.");EditorSceneManager.OpenScene(ScenePath);Generate();
+ }
+ [MenuItem("Tools/Candy Kingdom/Regenerate Shortcake Routes")]
+ public static void Regenerate(){
+  if(EditorApplication.isPlayingOrWillChangePlaymode||SceneManager.GetActiveScene().path!=ScenePath||SceneManager.GetActiveScene().isDirty)throw new Exception("Open saved two-route scene in Edit mode.");
+  Backup(ScenePath);Generate();
+ }
+ static void Generate(){Folder(Root+"/Materials");
+  var previous=GameObject.Find("ShortcakeAdventureGenerated");if(previous){if(!previous.GetComponent<ShortcakeRouteLayout>())throw new Exception("Unowned root found.");UnityEngine.Object.DestroyImmediate(previous);}
+  random=new System.Random(241024);
+  cookieGround=Mat("CaramelBiscuit");sponge=AssetDatabase.LoadAssetAtPath<Material>(Root+"/Materials/VanillaSponge.mat");if(!sponge){sponge=new Material(cookieGround);sponge.name="VanillaSponge";sponge.SetColor("_BaseColor",new Color(.95f,.80f,.56f));sponge.SetFloat("_Smoothness",.24f);AssetDatabase.CreateAsset(sponge,Root+"/Materials/VanillaSponge.mat");}cream=Mat("WhippedVanilla");pink=Mat("StrawberryPastel");choc=Mat("SmoothChocolate");mint=Mat("MintCandy");berry=Mat("Raspberry");seed=Mat("LemonCandy");blue=Mat("SkyBlueSugar");
+  rounded=AssetDatabase.LoadAssetAtPath<Mesh>(Art+"/Meshes/RoundedBiscuitBox.asset");disc=AssetDatabase.LoadAssetAtPath<Mesh>(Art+"/Meshes/RoundedPastryDisc.asset");whip=AssetDatabase.LoadAssetAtPath<Mesh>(Art+"/Meshes/WhippedCream.asset");strawberry=BerryMesh();
+  owner=Group("ShortcakeAdventureGenerated",null,Vector3.zero).transform;layout=owner.gameObject.AddComponent<ShortcakeRouteLayout>();course=Group("RouteB_PlayableCourse",owner,Vector3.zero).transform;
+  mountain=Group("ShortcakeMountain",owner,new Vector3(-14,0,25)).transform;castle=Group("SharedCastleApproach",owner,Vector3.zero).transform;
+  Tier("LowerSpongeFoothills",new Vector3(-14,-2.2f,25),8.8f,3.5f);Tier("CreamCliffs",new Vector3(-14,1.3f,26),6.4f,3.3f);Tier("StrawberryTerrace",new Vector3(-13,4.6f,26),4.2f,3.3f);
+  MeshObject("SummitWhippedMound",whip,new Vector3(-13,7.9f,26),new Vector3(4,.9f,4),cream,mountain);
+  Disk("SummitCreamObservationDeck",new Vector3(-13,8.8f,26),4,.9f,cream,mountain,true);
+  GroundExtension();
+  Ramp("LowerCreamSlope",new Vector3(-14,CandyKingdom.ArtUpgrade.Editor.CandyWorldArtBuilder.GroundHeight(-14,3),3),new Vector3(-14,.3f,11),3,cream,owner);
+  Ramp("UpperCreamSlope",new Vector3(-14,.3f,11),new Vector3(-14,1.3f,16.4f),3,cream,owner);
+  var cake=new List<SweetRouteNode>();
+  Plate(cake,"CakeEntry_01",new Vector3(-3,0,3.5f),2.8f,4);Plate(cake,"CakeEntry_02",new Vector3(-5.4f,.1f,5.6f),2.8f,2);Plate(cake,"CakeEntry_03",new Vector3(-7.8f,.2f,7.7f),2.8f,4);Plate(cake,"CakeEntry_04",new Vector3(-10.2f,.3f,9.8f),2.8f,2);Plate(cake,"CakeEntry_05",new Vector3(-12.6f,.3f,11.9f),2.8f,4);
+  cake.Add(Node("CreamRampJoin",new Vector3(-14,.3f,11),false));cake.Add(Node("CreamRampTop",new Vector3(-14,1.3f,18.5f),false));cake.Add(Node("CakeFoothillTerrace",new Vector3(-17,1.3f,18.5f),false));
+  BerryStep(cake,"CliffStrawberry_01",new Vector3(-19.8f,1.85f,19),2.2f);
+  Plate(cake,"ChocolateStair_02",new Vector3(-22,2.4f,21.4f),2.2f,5);
+  BerryStep(cake,"CliffStrawberry_03",new Vector3(-22.7f,3,24.5f),2.1f);
+  Plate(cake,"ChocolateStair_04",new Vector3(-22.1f,3.55f,27.6f),2.2f,5);
+  BerryStep(cake,"CliffStrawberry_05",new Vector3(-20.8f,4.1f,30.5f),2.15f);
+  Plate(cake,"ChocolateStair_06",new Vector3(-18.5f,4.6f,32.3f),2.4f,5);
+  cake.Add(Node("StrawberryTerraceLanding",new Vector3(-17,4.6f,31.2f),true));
+  Ramp("NarrowChocolateTerraceBridge",new Vector3(-17,4.6f,31.2f),new Vector3(-14,4.6f,34.1f),1.15f,choc,owner);
+  cake.Add(Node("NarrowBridgeExit",new Vector3(-14,4.6f,34.1f),false));
+  Plate(cake,"FloatingMacaron_01",new Vector3(-10.9f,4.9f,34.1f),2.2f,1,3.25f);
+  Plate(cake,"FloatingMacaron_02",new Vector3(-10.7f,5.2f,31.3f),2.2f,1);
+  Plate(cake,"FloatingMacaron_03",new Vector3(-8.5f,5.8f,29.2f),2.2f,1);
+  BerryStep(cake,"UpperStrawberry_04",new Vector3(-7.6f,6.4f,26.3f),2.2f);
+  Plate(cake,"FloatingMacaron_05",new Vector3(-8.3f,7,23.3f),2.2f,1);
+  Plate(cake,"FloatingMacaron_06",new Vector3(-10.6f,7.6f,21.3f),2.3f,1);
+  cake.Add(Node("UpperCakeTerrace",new Vector3(-12.5f,7.9f,22.7f),true));
+  cake.Add(Node("CakeSummit",new Vector3(-13,8.8f,26),true,2.6f));
+  layout.cakeRoute=cake.ToArray();
+  var originals=new List<SweetRouteNode>();for(int i=1;i<=16;i++)originals.Add(new SweetRouteNode(GameObject.Find("Route_"+i.ToString("00")).transform,true));layout.cookieRoute=originals.ToArray();
+  var switchPath=new List<SweetRouteNode>();
+  var a8=originals[7].point.position;
+  Ramp("MidRouteChocolateSwitch",a8,new Vector3(-8.5f,4.6f,23),1.35f,choc,owner);
+  switchPath.Add(Node("SwitchCakeLanding",new Vector3(-8.5f,4.6f,23),false));switchPath.Add(Node("SwitchRing_01",new Vector3(-10,4.6f,21.3f),false));switchPath.Add(Node("SwitchRing_02",new Vector3(-13.8f,4.6f,20.5f),false));switchPath.Add(Node("SwitchRing_03",new Vector3(-18.5f,4.6f,22.5f),false));switchPath.Add(Node("SwitchRing_04",new Vector3(-19.2f,4.6f,27.2f),false));switchPath.Add(Node("SwitchTerrace",new Vector3(-17,4.6f,31.2f),false));layout.midRouteSwitch=switchPath.ToArray();
+  var exit=new List<SweetRouteNode>();Vector3 summit=new Vector3(-13,8.8f,26),join=originals[15].point.position;int count=Mathf.CeilToInt(Vector3.Distance(summit,join)/3f);
+  for(int i=1;i<count;i++)Plate(exit,"SummitExit_"+i.ToString("00"),Vector3.Lerp(summit,join,i/(float)count),2.3f,i%2==0?2:1);
+  exit.Add(new SweetRouteNode(originals[15].point,true));layout.summitExit=exit.ToArray();
+  var shared=new List<SweetRouteNode>();Vector3 castleLanding=new Vector3(0,12,127.5f);int spans=Mathf.CeilToInt(Vector3.Distance(join,castleLanding)/3.15f);
+  for(int i=1;i<=spans;i++)Plate(shared,"CastleSkyRoute_"+i.ToString("00"),Vector3.Lerp(join,castleLanding,i/(float)spans),i%6==0?3.2f:2.8f,i%3==0?2:1);
+  var cap=GameObject.Find("CastleCreamGround").transform;var floor=Group("CastleWalkableGround",castle,cap.position);floor.transform.rotation=cap.rotation;floor.transform.localScale=cap.lossyScale;floor.AddComponent<MeshCollider>().sharedMesh=cap.GetComponent<MeshFilter>().sharedMesh;floor.isStatic=true;
+  shared.Add(Node("SugarCastleForecourt",new Vector3(0,12,135),false));layout.commonCastleRoute=shared.ToArray();
+  var goal=GameObject.Find("CandyTown_Goal");goal.transform.position=new Vector3(0,12.4f,135);layout.castleGoal=goal.transform;
+  for(int side=-1;side<=1;side+=2)Box("SugarGateColumn",new Vector3(side*2,13.5f,135),new Vector3(.45f,3,.45f),cream,castle,true);
+  Box("SugarGateArch",new Vector3(0,15.2f,135),new Vector3(4.5f,.5f,.6f),pink,castle,true);
+  Label("SUGAR CASTLE",new Vector3(0,12.035f,132),.8f,castle);
+  layout.groundEntrance=new[]{Node("GroundCakeRampEntrance",new Vector3(-14,CandyKingdom.ArtUpgrade.Editor.CandyWorldArtBuilder.GroundHeight(-14,3),3),false),Node("GroundCreamRampJoin",new Vector3(-14,.3f,11),false),Node("GroundCakeTop",new Vector3(-14,1.3f,18.5f),false)};
+  Strawberry("GiantTerraceStrawberry",new Vector3(-17.5f,7.9f,26),2.1f,mountain,true);Strawberry("SummitStrawberry",new Vector3(-11.3f,8.8f,26.8f),1.35f,mountain,true);
+  Strawberry("FrontHeroStrawberry",new Vector3(-11.5f,1.3f,17.8f),2.0f,mountain,true);Strawberry("TerraceHeroStrawberry",new Vector3(-12.5f,4.6f,31.7f),1.8f,mountain,true);
+  Strawberry("FoothillStrawberry",new Vector3(-8,1.3f,21),1.7f,mountain,true);
+  for(int i=0;i<12;i++){float angle=i*Mathf.PI/6;Vector3 p=new Vector3(-14+Mathf.Cos(angle)*7.5f,1.3f,25+Mathf.Sin(angle)*7.5f);if(p.z<20||p.x<-18.5f)continue;Strawberry("MountainGarnish_"+i,p,.7f+(float)random.NextDouble()*.5f,mountain,false);}
+  for(int i=0;i<8;i++){float a=i*Mathf.PI/4;MeshObject("WhippedCreamGarnish",whip,new Vector3(-14+Mathf.Cos(a)*5.5f,4.6f,26+Mathf.Sin(a)*5.5f),new Vector3(.7f,.9f,.7f),cream,mountain);}
+  Label("B  SHORTCAKE",new Vector3(-3,.035f,3.5f),.45f,owner);Label("A  COOKIE",new Vector3(1.2f,.035f,3),.40f,owner);Label("STRAWBERRY TERRACE",new Vector3(-16,4.64f,31),.25f,owner);Label("ROUTES MERGE",join+Vector3.up*.05f,.36f,owner);
+  PrefabUtility.SaveAsPrefabAsset(mountain.gameObject,Root+"/Prefabs/ShortcakeMountain.prefab");
+  EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());EditorSceneManager.SaveScene(SceneManager.GetActiveScene());Optimize();AssetDatabase.Refresh();
+  Debug.Log("Shortcake routes generated. A retained; B cake route, mid switch, summit merge and shared castle goal added.");
+ }
+}
+}
