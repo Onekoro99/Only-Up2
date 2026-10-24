@@ -1,0 +1,133 @@
+using System;
+using System.IO;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
+namespace CandyKingdom.Boundary.Editor {
+public static class CandyBoundaryBuilder {
+ public const string Root="Assets/CandyKingdom/Boundary";
+ public const string Source="Assets/CandyKingdom/Scenes/CandyTown_ShortcakeRoutes.unity";
+ public const string ScenePath="Assets/CandyKingdom/Scenes/CandyTown_EnclosedWorld.unity";
+ const string Art="Assets/CandyKingdom/ArtUpgrade";
+ public const int Segments=256;
+ static readonly float[] CoreOffsets={-8,-4,0,1.5f,1.5f,1.5f,1.5f,1.5f,1.5f,1.5f,1.5f,4,9,18};
+ static readonly float[] DistantOffsets={18,32,55,85,130,200};
+ static Material[] mats;static Mesh disc,whip,box;static Transform owner,decor;
+ static Material Mat(string n){return AssetDatabase.LoadAssetAtPath<Material>(Art+"/Materials/"+n+".mat");}
+ static void Folder(string p){if(AssetDatabase.IsValidFolder(p))return;string parent=Path.GetDirectoryName(p).Replace('\\','/');Folder(parent);AssetDatabase.CreateFolder(parent,Path.GetFileName(p));}
+ public static Vector3 Outline(float angle,float offset){
+  float c=Mathf.Cos(angle),s=Mathf.Sin(angle);
+  float r=Mathf.Pow(Mathf.Pow(Mathf.Abs(c)/49f,8)+Mathf.Pow(Mathf.Abs(s)/90f,8),-.125f);
+  r+=.80f*Mathf.Sin(angle*5+.4f)+.45f*Mathf.Sin(angle*11);
+  return new Vector3(c*(r+offset),0,67+s*(r+offset));
+ }
+ public static Vector3 Outward(float angle){var a=Outline(angle-.001f,1.5f);var b=Outline(angle+.001f,1.5f);var t=(b-a).normalized;return new Vector3(t.z,0,-t.x).normalized;}
+ public static float Floor(float x,float z){return CandyKingdom.ArtUpgrade.Editor.CandyWorldArtBuilder.GroundHeight(x,z);}
+ public static float WallRise(float angle){return 22+5*(.5f+.5f*Mathf.Sin(angle*3+.4f))+2*(.5f+.5f*Mathf.Cos(angle*7));}
+ public static float WallTop(float angle){var p=Outline(angle,1.5f);return Floor(p.x,p.z)+WallRise(angle);}
+ public static bool Inside(Vector3 p){
+  bool inside=false;var last=Outline((Segments-1)*Mathf.PI*2/Segments,1.5f);
+  for(int k=0;k<Segments;k++){var now=Outline(k*Mathf.PI*2/Segments,1.5f);if((now.z>p.z)!=(last.z>p.z)&&p.x<(last.x-now.x)*(p.z-now.z)/(last.z-now.z)+now.x)inside=!inside;last=now;}return inside;
+ }
+ static float CoreY(float a,int ring){
+  var p=Outline(a,CoreOffsets[ring]);
+  if(ring==0)return Floor(p.x,p.z)-.08f;if(ring==1)return Floor(p.x,p.z)+.035f;if(ring==2)return Floor(p.x,p.z)+.1f;
+  var foot=Outline(a,1.5f);float h=Floor(foot.x,foot.z);if(ring==3)return h+.65f;
+  if(ring<=10)return h+Mathf.Lerp(.65f,WallRise(a),(ring-3)/7f);
+  if(ring==11)return WallTop(a)+2;if(ring==12)return WallTop(a)+5;return WallTop(a)+2.5f;
+ }
+ static float DistantY(float a,int ring){if(ring==0)return CoreY(a,13);if(ring==1)return WallTop(a)-3;if(ring==2)return WallTop(a)-9;var p=Outline(a,DistantOffsets[ring]);return Floor(p.x,p.z)+(ring==3?10:ring==4?6:4)+Mathf.Sin(a*5)*1.2f;}
+ static int MaterialIndex(float angle,int band,bool near){
+  int zone=Mathf.FloorToInt(Mathf.Repeat(angle,Mathf.PI*2)/(Mathf.PI*2)*6);
+  if(!near)return band==0?1:zone==0?0:zone==1?6:zone==2?2:zone==3?4:zone==4?3:7;
+  if(band<3)return 1;
+  if(band>=10)return zone==2?2:zone==3?4:1;
+  if(zone==0)return band==4||band==7?1:band==5?5:0;
+  if(zone==1)return band%3==0?1:6;
+  if(zone==2)return band==5||band==8?3:2;
+  if(zone==3)return band%2==0?1:4;
+  if(zone==4)return band%3==0?2:3;
+  return band==4||band==7?1:band%2==0?5:7;
+ }
+ static Mesh Landscape(string name,bool near){
+  float[] offsets=near?CoreOffsets:DistantOffsets;int rings=offsets.Length,n=Segments;
+  var v=new List<Vector3>();var uv=new List<Vector2>();var triangles=new List<int>[mats.Length];for(int i=0;i<triangles.Length;i++)triangles[i]=new List<int>();
+  for(int j=0;j<rings;j++)for(int k=0;k<n;k++){float a=k*Mathf.PI*2/n;var p=Outline(a,offsets[j]);p.y=near?CoreY(a,j):DistantY(a,j);v.Add(p);uv.Add(new Vector2(k/12f,p.y*.25f));}
+  for(int j=0;j<rings-1;j++)for(int k=0;k<n;k++){int next=(k+1)%n,a=j*n+k,b=(j+1)*n+k,an=j*n+next,bn=(j+1)*n+next;var t=triangles[MaterialIndex((k+.5f)*Mathf.PI*2/n,j,near)];t.Add(a);t.Add(an);t.Add(b);t.Add(an);t.Add(bn);t.Add(b);}
+  int inner=v.Count;for(int k=0;k<n;k++){var p=v[k];p.y=-14;v.Add(p);uv.Add(new Vector2(k/12f,0));}
+  int outer=v.Count;for(int k=0;k<n;k++){var p=v[(rings-1)*n+k];p.y=-14;v.Add(p);uv.Add(new Vector2(k/12f,0));}
+  var bottom=triangles[3];
+  for(int k=0;k<n;k++){int next=(k+1)%n;int a=k,an=next,b=inner+k,bn=inner+next;bottom.Add(a);bottom.Add(b);bottom.Add(an);bottom.Add(an);bottom.Add(b);bottom.Add(bn);
+   a=(rings-1)*n+k;an=(rings-1)*n+next;b=outer+k;bn=outer+next;bottom.Add(a);bottom.Add(an);bottom.Add(b);bottom.Add(an);bottom.Add(bn);bottom.Add(b);
+   a=inner+k;an=inner+next;b=outer+k;bn=outer+next;bottom.Add(a);bottom.Add(b);bottom.Add(an);bottom.Add(an);bottom.Add(b);bottom.Add(bn);
+  }
+  string path=Root+"/Meshes/"+name+".asset";var mesh=AssetDatabase.LoadAssetAtPath<Mesh>(path);if(!mesh){mesh=new Mesh();mesh.name=name;AssetDatabase.CreateAsset(mesh,path);}else mesh.Clear();
+  mesh.indexFormat=UnityEngine.Rendering.IndexFormat.UInt32;mesh.SetVertices(v);mesh.SetUVs(0,uv);mesh.subMeshCount=mats.Length;for(int i=0;i<mats.Length;i++)mesh.SetTriangles(triangles[i],i);mesh.RecalculateNormals();mesh.RecalculateBounds();EditorUtility.SetDirty(mesh);AssetDatabase.SaveAssetIfDirty(mesh);return mesh;
+ }
+ static GameObject Group(string name,Transform parent,Vector3 pos){var g=new GameObject(name);g.transform.SetParent(parent,false);g.transform.position=pos;return g;}
+ static GameObject Shape(string name,Mesh mesh,Vector3 pos,Vector3 scale,Material mat,Transform parent){
+  var g=Group(name,parent,pos);g.transform.localScale=scale;g.AddComponent<MeshFilter>().sharedMesh=mesh;var r=g.AddComponent<MeshRenderer>();r.sharedMaterial=mat;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;g.isStatic=true;return g;
+ }
+ static void CakeCrown(Vector3 p,int i){
+  var g=Group("ConnectedShortcakeRange_"+i,decor,p);
+  for(int layer=0;layer<3;layer++){float d=16-layer*3f,h=3.0f-layer*.3f;var center=p+Vector3.up*(layer*2.8f+h*.5f);Shape("VanillaCake",disc,center,new Vector3(d,h,d),mats[0],g.transform);Shape("ThickCream",disc,p+Vector3.up*(layer*2.8f+h),new Vector3(d+.2f,.35f,d+.2f),mats[1],g.transform);}
+  Shape("WhipCrown",whip,p+Vector3.up*8,new Vector3(6,6,6),mats[1],g.transform);
+  var berryMesh=AssetDatabase.LoadAssetAtPath<Mesh>("Assets/CandyKingdom/Shortcake/Meshes/Strawberry.asset");if(berryMesh)Shape("StrawberryPeak",berryMesh,p+new Vector3(3,7.8f,0),new Vector3(3,4,3),Mat("Raspberry"),g.transform);
+ }
+ static void Decorate(){
+  disc=AssetDatabase.LoadAssetAtPath<Mesh>(Art+"/Meshes/RoundedPastryDisc.asset");whip=AssetDatabase.LoadAssetAtPath<Mesh>(Art+"/Meshes/WhippedCream.asset");box=AssetDatabase.LoadAssetAtPath<Mesh>(Art+"/Meshes/RoundedBiscuitBox.asset");
+  decor=Group("BoundaryMountainMotifs",owner,Vector3.zero).transform;
+  for(int i=0;i<36;i++){float a=i*Mathf.PI*2/36;var p=Outline(a,11);p.y=WallTop(a)+3;int type=i%6;
+   if(type==0)CakeCrown(p,i);
+   if(type==1)Shape("WhippedCreamMountain",whip,p-Vector3.up*2,new Vector3(22,13+i%3*2,22),mats[1],decor);
+   if(type==2){for(int k=0;k<3;k++){var g=Shape("ChocolateCrag",box,p+new Vector3((k-1)*5,4+k*.9f,0),new Vector3(7,12+k*2,10),mats[2],decor);g.transform.rotation=Quaternion.Euler(0,i*31,4-k*3);}}
+   if(type==3){for(int k=0;k<5;k++)Shape("WaferCliffStrata",box,p+Vector3.up*k*1.8f,new Vector3(16-k*.7f,1.8f,12-k*.4f),k%2==0?mats[4]:mats[1],decor);}
+   if(type==4){for(int k=0;k<3;k++){var g=Shape("CookieRockPeak",disc,p+new Vector3((k-1)*4,5+k,0),new Vector3(11,3,11),mats[3],decor);g.transform.rotation=Quaternion.Euler(70+k*8,i*37,0);}}
+   if(type==5){for(int k=0;k<3;k++){Shape("MacaronHill",disc,p+Vector3.up*(k*2.3f),new Vector3(18-k*3,3,18-k*3),k%2==0?mats[5]:mats[7],decor);Shape("MacaronCream",disc,p+Vector3.up*(k*2.3f+.1f),new Vector3(18.2f-k*3,.65f,18.2f-k*3),mats[1],decor);}}
+  }
+  for(int i=0;i<24;i++){float a=(i+.3f)*Mathf.PI*2/24;var p=Outline(a,46);p.y=DistantY(a,2);
+   Shape("DistantWhipTown",whip,p,new Vector3(14,10,14),i%2==0?mats[5]:mats[7],decor);
+   Shape("DistantCandyTree",disc,p+new Vector3(4,4,0),new Vector3(4,6,4),mats[6],decor);
+  }
+ }
+ static void BatchDecor(){
+  var groups=new Dictionary<Material,List<CombineInstance>>();var old=new List<MeshRenderer>();
+  foreach(var mf in decor.GetComponentsInChildren<MeshFilter>()){var mr=mf.GetComponent<MeshRenderer>();if(!mr||!mr.sharedMaterial)continue;var m=mr.sharedMaterial;if(!groups.ContainsKey(m))groups[m]=new List<CombineInstance>();groups[m].Add(new CombineInstance{mesh=mf.sharedMesh,transform=owner.worldToLocalMatrix*mf.transform.localToWorldMatrix});old.Add(mr);}
+  var batch=Group("BatchedBoundaryDecor",owner,Vector3.zero);
+  foreach(var pair in groups){string path=Root+"/Meshes/Decor_"+pair.Key.name+".asset";var m=AssetDatabase.LoadAssetAtPath<Mesh>(path);if(!m){m=new Mesh();m.name="BoundaryDecor_"+pair.Key.name;AssetDatabase.CreateAsset(m,path);}else m.Clear();m.indexFormat=UnityEngine.Rendering.IndexFormat.UInt32;m.CombineMeshes(pair.Value.ToArray(),true,true,false);m.RecalculateBounds();EditorUtility.SetDirty(m);AssetDatabase.SaveAssetIfDirty(m);Shape(pair.Key.name,m,Vector3.zero,Vector3.one,pair.Key,batch.transform);}
+  foreach(var r in old)r.enabled=false;
+ }
+ static void Backup(string path){
+  string stamp=DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");if(!AssetDatabase.CopyAsset(path,Root+"/Backups/Scene_"+stamp+".unity"))throw new Exception("Scene backup failed.");
+  foreach(var dir in new[]{"Assets/CandyKingdom/ArtUpgrade/Editor","Assets/CandyKingdom/Shortcake/Editor"})foreach(var file in Directory.GetFiles(dir,"*.cs"))File.Copy(file,Root+"/Backups/"+Path.GetFileName(file)+"_"+stamp+".txt");
+  File.Copy("Assets/CandyKingdom/Boundary/Editor/CandyBoundaryBuilder.cs",Root+"/Backups/BoundaryBuilder_"+stamp+".cs.txt");
+ }
+ [MenuItem("Tools/Candy Kingdom/Create Enclosed World Scene")]
+ public static void Create(){
+  if(EditorApplication.isPlayingOrWillChangePlaymode||SceneManager.GetActiveScene().isDirty)throw new Exception("Stop Play and save current scene first.");
+  if(AssetDatabase.LoadMainAssetAtPath(ScenePath))throw new Exception("Enclosed scene exists; use Regenerate Boundary.");
+  foreach(var name in new[]{"Meshes","Materials","Backups"})Folder(Root+"/"+name);Backup(Source);
+  var files=new List<string>(Directory.GetFiles("Assets/Characters","*",SearchOption.AllDirectories));files.AddRange(Directory.GetFiles("Assets/OnlyUpPrototype/Runtime","*.cs"));files.AddRange(Directory.GetFiles("Assets/CandyKingdom/Motion/Runtime","*.cs"));files.AddRange(Directory.GetFiles("Assets/CandyKingdom/Motion/Clips","*.anim"));files.Add("Assets/CandyKingdom/Motion/Controllers/CandyMotion_Test.controller");files.Add("ProjectSettings/InputManager.asset");files.Add(Source);files.Add("Assets/CandyKingdom/Shortcake/Editor/ShortcakeMountainBuilder.cs");
+  var hashes=new Dictionary<string,string>();using(var sha=System.Security.Cryptography.SHA256.Create())foreach(var file in files)hashes[file]=BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(file)));File.WriteAllText(Root+"/Backups/ProtectedHashes.json",Newtonsoft.Json.JsonConvert.SerializeObject(hashes));
+  if(!AssetDatabase.CopyAsset(Source,ScenePath))throw new Exception("Scene copy failed.");EditorSceneManager.OpenScene(ScenePath);Generate();
+ }
+ [MenuItem("Tools/Candy Kingdom/Regenerate Boundary")]
+ public static void Regenerate(){
+  if(EditorApplication.isPlayingOrWillChangePlaymode||SceneManager.GetActiveScene().path!=ScenePath||SceneManager.GetActiveScene().isDirty)throw new Exception("Open saved enclosed scene in Edit mode.");Backup(ScenePath);Generate();
+ }
+ static void Generate(){
+  var prior=GameObject.Find("BoundaryWorldGenerated");if(prior){if(!prior.GetComponent<CandyBoundaryMarker>())throw new Exception("Unowned root found.");UnityEngine.Object.DestroyImmediate(prior);}
+  mats=new[]{AssetDatabase.LoadAssetAtPath<Material>("Assets/CandyKingdom/Shortcake/Materials/VanillaSponge.mat"),Mat("WhippedVanilla"),Mat("SmoothChocolate"),Mat("CaramelBiscuit"),Mat("LemonCandy"),Mat("StrawberryPastel"),Mat("MintCandy"),Mat("LavenderMacaron")};
+  owner=Group("BoundaryWorldGenerated",null,Vector3.zero).transform;var marker=owner.gameObject.AddComponent<CandyBoundaryMarker>();
+  var physical=Group("ContinuousSweetCliff_Rim",owner,Vector3.zero);var core=Landscape("ContinuousPlayableRim",true);physical.AddComponent<MeshFilter>().sharedMesh=core;var renderer=physical.AddComponent<MeshRenderer>();renderer.sharedMaterials=mats;renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;marker.continuousRim=physical.AddComponent<MeshCollider>();marker.continuousRim.sharedMesh=core;physical.isStatic=true;
+  var distant=Group("ConnectedDistantLandscape_NoAccess",owner,Vector3.zero);distant.AddComponent<MeshFilter>().sharedMesh=Landscape("ConnectedOuterLandscape",false);var far=distant.AddComponent<MeshRenderer>();far.sharedMaterials=mats;far.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;distant.isStatic=true;
+  Decorate();BatchDecor();
+  var sky=AssetDatabase.LoadAssetAtPath<Material>(Root+"/Materials/EnclosedSky.mat");if(!sky){sky=new Material(RenderSettings.skybox);sky.name="EnclosedSky";AssetDatabase.CreateAsset(sky,Root+"/Materials/EnclosedSky.mat");}
+  RenderSettings.skybox=sky;RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=sky.GetColor("_Horizon");RenderSettings.fogStartDistance=65;RenderSettings.fogEndDistance=215;
+  EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());EditorSceneManager.SaveScene(SceneManager.GetActiveScene());AssetDatabase.Refresh();
+  Debug.Log("Enclosed sweet world generated: continuous shared-vertex rim, visible vertical cliffs, connected back slopes and distant land; controls and respawn unchanged.");
+ }
+}
+}
