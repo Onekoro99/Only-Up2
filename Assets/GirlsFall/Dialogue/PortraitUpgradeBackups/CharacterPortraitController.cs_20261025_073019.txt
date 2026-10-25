@@ -1,0 +1,37 @@
+using System;
+using UnityEngine;
+using UnityEngine.UI;
+namespace GirlsFall.Dialogue {
+ [Serializable] public sealed class PortraitExpression {
+  public CharacterExpression expression; public Sprite sprite;
+  [Tooltip("共通表示枠内での位置調整（画像自体は変更しない）")] public Vector2 offset;
+  [Range(.5f,1.5f)] public float scale=1;
+ }
+ public sealed class CharacterPortraitController:MonoBehaviour {
+  public Image portrait,previousPortrait;
+  public PortraitExpression[] expressions;
+  [Min(.01f)] public float fadeDuration=.16f;
+  float elapsed; bool fading,hasImage,previousVisible;
+  public Sprite CurrentSprite=>portrait.sprite;
+  public bool Show(CharacterExpression expression){
+   var entry=Array.Find(expressions,e=>e.expression==expression);
+   if(entry==null||!entry.sprite)return false;
+   previousVisible=hasImage;previousPortrait.sprite=portrait.sprite;
+   previousPortrait.rectTransform.anchoredPosition=portrait.rectTransform.anchoredPosition;
+   previousPortrait.rectTransform.localScale=portrait.rectTransform.localScale;
+   previousPortrait.color=new Color(1,1,1,hasImage?1:0);
+   portrait.sprite=entry.sprite;portrait.preserveAspect=true;
+   portrait.rectTransform.anchoredPosition=entry.offset;
+   portrait.rectTransform.localScale=Vector3.one*entry.scale;
+   portrait.color=new Color(1,1,1,0);elapsed=0;fading=true;hasImage=true;
+   return true;
+  }
+  public void Tick(float dt){
+   if(!fading)return;elapsed+=Mathf.Max(0,dt);float a=Mathf.Clamp01(elapsed/fadeDuration);
+   portrait.color=new Color(1,1,1,a);previousPortrait.color=new Color(1,1,1,1-a);
+   if(!previousVisible||!previousPortrait.sprite)previousPortrait.color=Color.clear;
+   if(a>=1){fading=false;previousPortrait.color=Color.clear;}
+  }
+  void Update(){Tick(Time.unscaledDeltaTime);}
+ }
+}

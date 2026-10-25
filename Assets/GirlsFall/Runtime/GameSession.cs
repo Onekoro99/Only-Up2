@@ -6,7 +6,8 @@ namespace GirlsFall
 {
     public static class GameSession
     {
-        public const string GameplayScene = "GirlsFallGameplay";
+        public const string GameplayScene = "CandyTown_EnclosedWorld";
+        public const string LegacyGameplayScene = "GirlsFallGameplay";
         public const string TitleScene = "TitleScene";
         public static PlayerSaveState PendingState { get; private set; }
         public static bool NewGameRequested { get; private set; }

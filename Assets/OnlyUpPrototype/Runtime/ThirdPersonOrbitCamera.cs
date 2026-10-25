@@ -7,38 +7,80 @@ namespace OnlyUpPrototype
     [RequireComponent(typeof(Camera))]
     public sealed class ThirdPersonOrbitCamera : MonoBehaviour
     {
-        [Header("Target and initial framing")]
-        [SerializeField] private Transform target;
-        [SerializeField, InspectorName("Look At Height")] private float targetHeight = 1.2f;
-        [SerializeField, Tooltip("Initial camera eye height above the player at the default distance.")]
+        [Header("追従対象と初期構図")]
+        [SerializeField]
+        [Tooltip("追従・注視するプレイヤーのTransformです。この対象と子階層のColliderはカメラの障害物判定から除外します。")]
+        private Transform target;
+        [SerializeField, InspectorName("Look At Height")]
+        [Tooltip("プレイヤー位置から注視点を上げる高さ（m）です。大きいほど顔寄り、小さいほど足元寄りを見ます。初期値1.2mです。初期仰角の計算にも使います。")]
+        private float targetHeight = 1.2f;
+        [SerializeField]
+        [Tooltip("初期距離でのカメラの高さ（プレイヤー位置からのm）です。大きいほど高い初期構図、小さいほど低い構図になります。初期値1.5mで、操作中に高さを固定する値ではありません。")]
         private float cameraHeight = 1.5f;
-        [SerializeField, Min(0.1f), InspectorName("Default Camera Distance")] private float distance = 3f;
-        [SerializeField, Min(0.1f)] private float minCameraDistance = 1.5f;
-        [SerializeField, Min(0.1f)] private float maxCameraDistance = 7f;
+        [SerializeField, Min(0.1f), InspectorName("Default Camera Distance")]
+        [Tooltip("開始時・中クリックで戻すカメラ距離（m）です。大きいほど遠く広く、小さいほど近く大きくキャラクターを映します。初期値3mで最小・最大距離内に制限されます。")]
+        private float distance = 3f;
+        [SerializeField, Min(0.1f)]
+        [Tooltip("ホイールで近づけられる最小距離（m）です。小さいほど接近でき、大きいほど離れた位置で止まります。初期値1.5m。障害物回避時はこの値より近づく場合があります。")]
+        private float minCameraDistance = 1.5f;
+        [SerializeField, Min(0.1f)]
+        [Tooltip("ホイールで離せる最大距離（m）です。大きいほど遠くへ引け、小さいほどキャラクターを大きく保てます。初期値7mです。")]
+        private float maxCameraDistance = 7f;
 
-        [Header("Look and follow")]
-        [SerializeField, Min(0f)] private float sensitivity = 3f;
-        [SerializeField] private float minPitch = -35f;
-        [SerializeField] private float maxPitch = 70f;
+        [Header("カメラ回転と追従")]
+        [SerializeField, Min(0f)]
+        [Tooltip("マウスによる水平・上下回転の感度です。大きいほど少ないマウス移動で大きく回転します。初期値3。保存済みオプションの感度がある場合はその値が適用されます。")]
+        private float sensitivity = 3f;
+        [SerializeField]
+        [Tooltip("上下回転角の下限（度）です。より小さな負の値にすると、カメラを低くして見上げられる範囲が広がります。大きくすると見上げを制限します。初期値−35度です。")]
+        private float minPitch = -35f;
+        [SerializeField]
+        [Tooltip("上下回転角の上限（度）です。大きいほど上から見下ろせ、小さいほど高い視点を制限します。初期値70度です。")]
+        private float maxPitch = 70f;
         [SerializeField, HideInInspector] private float pitch = 5.74f;
-        [SerializeField] private float yaw;
-        [SerializeField, Min(0.1f)] private float followSmoothness = 20f;
-        [SerializeField, Min(0.1f)] private float rotationSmoothness = 18f;
-        [SerializeField, Min(1f)] private float teleportSnapDistance = 8f;
-        [SerializeField] private bool autoCaptureOnEnable = true;
+        [SerializeField]
+        [Tooltip("視線の水平方向の回転角（度）です。0はワールド前方を見ます。値を増やすと視線が右回りに変わり、再生中はマウス入力により更新されます。")]
+        private float yaw;
+        [SerializeField, Min(0.1f)]
+        [Tooltip("移動・ジャンプ・落下への位置追従の速さです。大きいほどすぐ追い、小さいほどゆっくり追います。初期値20で、大きいほど揺れを強くする設定ではありません。")]
+        private float followSmoothness = 20f;
+        [SerializeField, Min(0.1f)]
+        [Tooltip("目標回転角へ追いつく速さです。大きいほど機敏、小さいほどゆっくり滑らかに回ります。初期値18です。")]
+        private float rotationSmoothness = 18f;
+        [SerializeField, Min(1f)]
+        [Tooltip("追従位置との差がこの距離（m）を超えたときは補間せず合わせます。小さいほど小さな移動でも即座に追いつき、大きいほど補間を続けます。初期値8mです。")]
+        private float teleportSnapDistance = 8f;
+        [SerializeField]
+        [Tooltip("有効にすると、Play開始・カメラ再有効化時にカーソルを中央固定して非表示にします。無効ならゲーム画面のクリックで固定を開始します。")]
+        private bool autoCaptureOnEnable = true;
 
-        [Header("Wheel zoom")]
-        [SerializeField, Min(0f)] private float zoomSpeed = 10f;
-        [SerializeField, Min(0.1f)] private float zoomSmoothness = 12f;
+        [Header("マウスホイールのズーム")]
+        [SerializeField, Min(0f)]
+        [Tooltip("ホイールで目標距離を変える大きさ（m/ホイール入力値）です。大きいほど一度に大きくズームします。初期値10では入力0.1で1m変わります。")]
+        private float zoomSpeed = 10f;
+        [SerializeField, Min(0.1f)]
+        [Tooltip("ホイールの目標距離へ近づく速さです。大きいほど素早く、小さいほどゆっくり距離が変わります。初期値12です。")]
+        private float zoomSmoothness = 12f;
 
-        [Header("Occlusion")]
-        [SerializeField, Min(0.05f), InspectorName("Camera Collision Radius")] private float collisionRadius = 0.22f;
-        [SerializeField, Min(0f)] private float collisionPadding = 0.1f;
-        [SerializeField, Min(0.1f)] private float returnSmoothness = 10f;
-        [SerializeField] private LayerMask collisionMask = ~0;
-        [SerializeField, Tooltip("Avoid rendering the inside of the model when an obstruction forces the camera extremely close.")]
+        [Header("障害物と接近時の描画")]
+        [SerializeField, Min(0.05f), InspectorName("Camera Collision Radius")]
+        [Tooltip("カメラの障害物判定に使う球の半径（m）です。大きいほど広めに壁を避け、小さいほど狭い場所へ入れます。初期値0.22mです。")]
+        private float collisionRadius = 0.22f;
+        [SerializeField, Min(0f)]
+        [Tooltip("障害物の手前に追加で空ける余裕（m）です。大きいほど壁から離れ、小さいほど壁へ近づけます。初期値0.1mです。")]
+        private float collisionPadding = 0.1f;
+        [SerializeField, Min(0.1f)]
+        [Tooltip("障害物がなくなったとき、指定ズーム距離へ戻る速さです。大きいほど速く、小さいほどゆっくり戻ります。初期値10で、壁からの退避は安全のため即時です。")]
+        private float returnSmoothness = 10f;
+        [SerializeField]
+        [Tooltip("カメラの障害物判定を行うレイヤーです。外したレイヤーは壁として扱いません。トリガーとプレイヤー自身のColliderは別途除外します。")]
+        private LayerMask collisionMask = ~0;
+        [SerializeField]
+        [Tooltip("有効にすると、壁に押されて身体の内部が映るほど接近した場合だけキャラクター描画を一時的に隠します。離れると元に戻り、モデルデータは変更しません。")]
         private bool hidePlayerWhenVeryClose = true;
-        [SerializeField, Min(0.1f)] private float playerHideDistance = 0.6f;
+        [SerializeField, Min(0.1f)]
+        [Tooltip("接近時にキャラクター描画を隠し始める実距離（m）です。大きいほど早く隠れ、小さいほど近づいてから隠れます。初期値0.6m。再表示には少し余裕を設けています。")]
+        private float playerHideDistance = 0.6f;
 
         private float targetDistance, smoothedZoomDistance, currentDistance;
         private Vector3 followedPosition;

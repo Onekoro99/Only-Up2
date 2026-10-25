@@ -1,0 +1,53 @@
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+namespace GirlsFall.Dialogue {
+ [ExecuteAlways,DisallowMultipleComponent]
+ public sealed class DialogueTextLayout:MonoBehaviour {
+  [Header("References")] public TMP_Text body,speaker;
+  public RectTransform nameLabel;
+  public Image nameBackground;
+  [Header("Dialogue text")]
+  [Min(8),Tooltip("本文の文字サイズ。1920×1080基準。自動縮小は行いません。")] public float fontSize=34;
+  [Tooltip("本文Rectの左右移動。親ウィンドウ左上が基準です。")] public float textPositionX;
+  [Tooltip("本文Rectの上下移動。正で上、負で下へ移動します。")] public float textPositionY;
+  [Min(20),Tooltip("本文Rectの幅。内側の余白を除いた範囲で折り返します。")] public float textWidth=1330;
+  [Min(20),Tooltip("本文Rectの高さ。本文が長いときは高さ・余白または会話の区切りを調整してください。")] public float textHeight=300;
+  [Tooltip("TextMeshProの追加行間。正の値で行間が広がります。")] public float lineSpacing=8;
+  [Tooltip("文字間の追加スペース。文字列に空白を入れずに調整できます。")] public float characterSpacing;
+  [Tooltip("本文の色。初期値は濃いグレー #383838。")] public Color textColor=new Color32(56,56,56,255);
+  [Header("Text padding")]
+  [Min(0),Tooltip("本文Rect左端から文字までの余白。")] public float textLeftPadding=82;
+  [Min(0),Tooltip("本文Rect右端の余白。")] public float textRightPadding=58;
+  [Min(0),Tooltip("本文Rect上端の余白。名前ラベルの下に本文を配置します。")] public float textTopPadding=84;
+  [Min(0),Tooltip("本文Rect下端の余白。操作案内や次へアイコンの領域を確保します。")] public float textBottomPadding=58;
+  [Header("Character name")]
+  [Min(8),Tooltip("キャラクター名の文字サイズ。")] public float nameFontSize=28;
+  [Tooltip("名前ラベルの左端位置。親ウィンドウ左上からの距離。")] public float namePositionX=44;
+  [Tooltip("名前ラベルの上下位置。負で上端から下へ移動します。")] public float namePositionY=-14;
+  [Min(20),Tooltip("角丸の名前ラベル幅。")] public float nameLabelWidth=250;
+  [Min(20),Tooltip("名前ラベルの高さ。")] public float nameLabelHeight=52;
+  [Tooltip("名前の文字色。初期値は白。")] public Color nameTextColor=Color.white;
+  [Tooltip("名前ラベルの背景色。初期値は #FF70A5。")] public Color nameBackgroundColor=new Color32(255,112,165,255);
+  bool dirty=true;
+  void OnEnable(){ApplyLayout();}
+  void OnValidate(){dirty=true;}
+  void LateUpdate(){if(dirty)ApplyLayout();}
+  public void ApplyLayout(){
+   if(!body||!speaker||!nameLabel||!nameBackground)return;
+   var rect=body.rectTransform;rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);
+   rect.anchoredPosition=new Vector2(textPositionX,textPositionY);
+   rect.sizeDelta=new Vector2(Mathf.Max(20,textWidth),Mathf.Max(20,textHeight));
+   body.fontSize=Mathf.Max(8,fontSize);body.fontStyle=FontStyles.Normal;body.enableAutoSizing=false;
+   body.alignment=TextAlignmentOptions.TopLeft;body.lineSpacing=lineSpacing;body.characterSpacing=characterSpacing;
+   body.textWrappingMode=TextWrappingModes.Normal;body.overflowMode=TextOverflowModes.Masking;
+   body.color=textColor;body.margin=new Vector4(Mathf.Max(0,textLeftPadding),Mathf.Max(0,textTopPadding),Mathf.Max(0,textRightPadding),Mathf.Max(0,textBottomPadding));body.raycastTarget=false;
+   nameLabel.anchorMin=nameLabel.anchorMax=nameLabel.pivot=new Vector2(0,1);
+   nameLabel.anchoredPosition=new Vector2(namePositionX,namePositionY);nameLabel.sizeDelta=new Vector2(Mathf.Max(20,nameLabelWidth),Mathf.Max(20,nameLabelHeight));
+   var name=speaker.rectTransform;name.anchorMin=Vector2.zero;name.anchorMax=Vector2.one;name.pivot=new Vector2(.5f,.5f);name.anchoredPosition=Vector2.zero;name.sizeDelta=Vector2.zero;
+   speaker.fontSize=Mathf.Max(8,nameFontSize);speaker.fontStyle=FontStyles.Normal;speaker.enableAutoSizing=false;speaker.alignment=TextAlignmentOptions.Center;speaker.color=nameTextColor;speaker.margin=Vector4.zero;speaker.raycastTarget=false;
+   nameBackground.color=nameBackgroundColor;dirty=false;
+   // Only typography and rectangles change. Text and maxVisibleCharacters belong to the existing dialogue UI.
+  }
+ }
+}

@@ -4,8 +4,13 @@ namespace CandyKingdom.Motion {
 [DefaultExecutionOrder(-50)]
 [RequireComponent(typeof(PrototypePlayerMotor),typeof(Animator))]
 public sealed class CandyMotionDriver:MonoBehaviour {
- [SerializeField,Range(.1f,3f)] float longFallDelay=.65f;
- [SerializeField,Min(.1f)] float runReferenceSpeed=3.5f;
+ [SerializeField,Range(.1f,3f)]
+ [Header("モーションの切り替え")]
+ [Tooltip("下降開始からLong Fallへ切り替えるまでの時間（秒）です。大きいほど通常の落下姿勢が長く、小さいほど早く長時間落下の姿勢になります。初期値0.65秒です。")]
+ float longFallDelay=.65f;
+ [SerializeField,Min(.1f)]
+ [Tooltip("走りアニメーションの基準速度（m/秒）です。実際の横移動速度をこの値で割って再生倍率を決めます。大きくすると同じ移動速度で遅い再生になり、移動速度自体は変わりません。初期値3.5で、再生倍率は0.65〜1.5に制限されます。")]
+ float runReferenceSpeed=3.5f;
  PrototypePlayerMotor motor;Animator animator;
  bool initialized;float fallTime;Vector3 lastPosition;
  public float LongFallDelay {get=>longFallDelay;set=>longFallDelay=Mathf.Max(.1f,value);}

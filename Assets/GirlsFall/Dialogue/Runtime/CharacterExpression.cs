@@ -1,0 +1,1 @@
+namespace GirlsFall.Dialogue { public enum CharacterExpression { Normal, Surprised, Crying, Angry, Troubled } }

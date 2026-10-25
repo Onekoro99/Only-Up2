@@ -7,7 +7,7 @@ namespace GirlsFall
     public sealed class PlayerSaveState
     {
         public int schemaVersion = 1;
-        public string sceneName = "GirlsFallGameplay";
+        public string sceneName = GameSession.GameplayScene;
         public int stage = 1;
         public long pv;
         public double playSeconds;
@@ -22,10 +22,11 @@ namespace GirlsFall
         public float departureHeight;
         public float peakHeight;
         public bool stageCompleted;
+        public bool openingDialogueCompleted;
 
         public bool IsValid()
         {
-            return schemaVersion == 1 && sceneName == "GirlsFallGameplay" && stage >= 1 && pv >= 0 &&
+            return schemaVersion == 1 && (sceneName == GameSession.GameplayScene || sceneName == GameSession.LegacyGameplayScene) && stage >= 1 && pv >= 0 &&
                 playSeconds >= 0 && !double.IsNaN(playSeconds) && !double.IsInfinity(playSeconds) &&
                 Finite(position.x) && Finite(position.y) && Finite(position.z) &&
                 Finite(rotation.x) && Finite(rotation.y) && Finite(rotation.z) && Finite(rotation.w) &&

@@ -9,6 +9,9 @@ EditorBuildSettings:
     path: Assets/GirlsFall/Scenes/TitleScene.unity
     guid: 4f5511dc4b351fa48be900b2a7f4b702
   - enabled: 1
+    path: Assets/CandyKingdom/Scenes/CandyTown_EnclosedWorld.unity
+    guid: 5dc79e1354ad30046898391b8e4e96a4
+  - enabled: 1
     path: Assets/GirlsFall/Scenes/GirlsFallGameplay.unity
     guid: 9fb86f468e083f14c89fc4cc159675d7
   - enabled: 1

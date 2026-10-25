@@ -4,10 +4,19 @@ namespace OnlyUpPrototype
 {
     public sealed class PrototypeHUD : MonoBehaviour
     {
-        [SerializeField] private Transform player;
-        [SerializeField] private FallTracker falls;
-        [SerializeField] private StageRespawn respawn;
-        [SerializeField] private PrototypeGoal goal;
+        [SerializeField]
+        [Header("デバッグ表示の参照")]
+        [Tooltip("高さと最高到達点を表示する対象のTransformです。デバッグ用HUDの参照で、プレイヤーの移動処理は変更しません。")]
+        private Transform player;
+        [SerializeField]
+        [Tooltip("最後の落下距離と現在の落下状態をデバッグ表示するためのFallTrackerです。")]
+        private FallTracker falls;
+        [SerializeField]
+        [Tooltip("スタート地点への復帰回数をデバッグ表示するStageRespawnです。")]
+        private StageRespawn respawn;
+        [SerializeField]
+        [Tooltip("ゴール到達の表示に使用するPrototypeGoalです。この参照を変更してもゴール自体の判定設定は変わりません。")]
+        private PrototypeGoal goal;
         private float highest;
         private GUIStyle title, body;
         private void Update() { if (player) highest = Mathf.Max(highest, player.position.y); }

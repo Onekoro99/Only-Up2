@@ -1,0 +1,26 @@
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+namespace GirlsFall.Dialogue {
+ public sealed class DialogueUIController:MonoBehaviour {
+  public CanvasGroup group;
+  public GameObject presentation,errorPanel;
+  public TMP_Text speaker,body,nextIcon,errorText;
+  public Button advanceButton,skipButton,retryButton,titleButton;
+  public CharacterPortraitController portraits;
+  public int CharacterCount {get;private set;}
+  public void Show(){
+   presentation.SetActive(true);errorPanel.SetActive(false);
+   group.alpha=0;group.interactable=true;group.blocksRaycasts=true;
+   UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null);
+  }
+  public void SetLine(string name,string text,CharacterExpression expression){
+   speaker.text=name;body.text=text??"";body.maxVisibleCharacters=0;
+   body.ForceMeshUpdate();CharacterCount=body.textInfo.characterCount;
+   portraits.Show(expression);nextIcon.gameObject.SetActive(false);
+  }
+  public void Reveal(int count){body.maxVisibleCharacters=count;nextIcon.gameObject.SetActive(count>=CharacterCount);}
+  public void Error(string text){errorText.text=text;errorPanel.SetActive(true);advanceButton.interactable=false;skipButton.interactable=false;}
+  public void Hide(){group.alpha=0;group.interactable=false;group.blocksRaycasts=false;presentation.SetActive(false);}
+ }
+}
