@@ -8,11 +8,38 @@ namespace GirlsFall
 {
     public sealed class OptionsMenuController : MonoBehaviour
     {
-        public Slider masterSlider, bgmSlider, seSlider, sensitivitySlider;
-        public TMP_Text masterValue, bgmValue, seValue, sensitivityValue, feedback;
+        [Header("設定用スライダー")]
+        [Tooltip("全体音量を調整するスライダーです。値を上げると全体が大きくなり、0で無音になります。値の範囲は0〜1です。")]
+        public Slider masterSlider;
+        [Tooltip("BGM音量のスライダーです。値を上げるとBGMが大きくなります。実際の音量には全体音量も掛かります。範囲は0〜1です。")]
+        public Slider bgmSlider;
+        [Tooltip("効果音の音量スライダーです。値を上げると効果音が大きくなります。実際の音量には全体音量も掛かります。範囲は0〜1です。")]
+        public Slider seSlider;
+        [Tooltip("マウスによるカメラ回転感度のスライダーです。値を上げると少ない移動で大きく回転し、下げるとゆっくりになります。")]
+        public Slider sensitivitySlider;
+        [Header("現在値とメッセージの表示")]
+        [Tooltip("全体音量をパーセントで表示するテキストです。スライダーの現在値に合わせて更新します。")]
+        public TMP_Text masterValue;
+        [Tooltip("BGM音量のスライダー値をパーセント表示するテキストです。")]
+        public TMP_Text bgmValue;
+        [Tooltip("効果音の音量スライダー値をパーセント表示するテキストです。")]
+        public TMP_Text seValue;
+        [Tooltip("マウス感度の現在値を小数で表示するテキストです。")]
+        public TMP_Text sensitivityValue;
+        [Tooltip("オプション設定の保存成功や、保存失敗のメッセージを表示するテキストです。")]
+        public TMP_Text feedback;
+        [Header("画面表示の設定")]
+        [Tooltip("オンでフルスクリーン、オフでウィンドウ表示を選ぶトグルです。保存または戻る操作時に画面設定へ適用します。")]
         public Toggle fullscreen;
+        [Tooltip("表示解像度を選ぶドロップダウンです。大きな解像度ほど細かく表示できますが描画負荷が増えます。保存または戻る操作時に適用します。")]
         public TMP_Dropdown resolution;
-        public Button saveButton, defaultsButton, backButton;
+        [Header("設定画面のボタン")]
+        [Tooltip("現在のオプションを適用して保存するボタンです。進行データは変更しません。")]
+        public Button saveButton;
+        [Tooltip("音量・解像度・感度などを初期設定へ戻すボタンです。進行データは初期化しません。保存すると再起動後も初期設定が使われます。")]
+        public Button defaultsButton;
+        [Tooltip("設定を適用・保存してオプション画面を閉じるボタンです。保存に失敗した場合は画面を閉じません。")]
+        public Button backButton;
         private readonly List<Vector2Int> sizes = new List<Vector2Int>();
         private bool hooked;
         public void Show()

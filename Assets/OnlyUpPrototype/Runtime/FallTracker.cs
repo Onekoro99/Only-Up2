@@ -17,7 +17,10 @@ namespace OnlyUpPrototype
     [RequireComponent(typeof(PrototypePlayerMotor))]
     public sealed class FallTracker : MonoBehaviour
     {
-        [SerializeField, Min(0f)] private float significantFallDistance = 3f;
+        [SerializeField, Min(0f)]
+        [Header("落下の記録")]
+        [Tooltip("大きな落下として記録する距離（m）のしきい値です。大きいほど判定されにくく、小さいほど短い落下も該当します。初期値3mで、移動や復帰条件自体は変えません。")]
+        private float significantFallDistance = 3f;
         private PrototypePlayerMotor motor;
         private bool airborne;
         private float departureHeight;

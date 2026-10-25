@@ -1,0 +1,40 @@
+using UnityEngine;
+using UnityEngine.UI;
+namespace GirlsFall.Dialogue {
+ [ExecuteAlways,RequireComponent(typeof(CharacterPortraitController))]
+ public sealed class CharacterPortraitLayout:MonoBehaviour {
+  [Tooltip("画面左端からの左右位置。基準1920×1080のUI単位。0で実描画範囲を左端に接します。")] public float positionX;
+  [Tooltip("画面下端からの上下位置。0で下端に接します。正の値は意図的に隙間を作ります。")] public float positionY;
+  [Min(.1f),Tooltip("全表情に共通の拡大率。左下を基準に拡大します。")] public float scale=1;
+  [Tooltip("下端を隠すための補正。正の値で画像を下へ移動。初期値2は境界の細い隙間を防ぎます。")] public float bottomOffset=2;
+  [Min(20),Tooltip("実描画範囲の基準表示幅。Scale=1、1920×1080時のUI単位。")] public float width=570;
+  [Tooltip("異なる画面比率でも会話ウィンドウと同じ基準倍率に合わせます。位置は常に実画面の左下です。")] public bool fitToScreen=true;
+  CharacterPortraitController controller;
+  void LateUpdate(){ApplyLayout();}
+  void OnEnable(){controller=GetComponent<CharacterPortraitController>();}
+  public void ApplyLayout(){
+   if(!controller)controller=GetComponent<CharacterPortraitController>();
+   var root=transform as RectTransform;if(!root)return;
+   var parent=root.parent as RectTransform;float fit=1;
+   if(parent&&fitToScreen)fit=Mathf.Max(.01f,Mathf.Min(parent.rect.width/1920f,parent.rect.height/1080f));
+   root.anchorMin=root.anchorMax=root.pivot=Vector2.zero;
+   root.anchoredPosition=new Vector2(positionX,positionY)*fit;
+   root.sizeDelta=new Vector2(Mathf.Max(20,width),Mathf.Max(20,width)/ReferenceAspect());
+   root.localScale=Vector3.one*Mathf.Max(.1f,scale)*fit;
+   if(!Application.IsPlaying(gameObject))controller.EditorPreview();else controller.ReapplyLayout();
+  }
+  float ReferenceAspect(){
+   var e=controller.Find(CharacterExpression.Normal);return e!=null&&e.sprite?e.sprite.rect.width/e.sprite.rect.height:1.17f;
+  }
+  public void ApplyImage(Image image,PortraitExpression entry){
+   if(!image||entry==null||!entry.sprite)return;
+   Rect bounds=entry.analyzedSprite==entry.sprite&&entry.alphaBounds.width>0?entry.alphaBounds:new Rect(0,0,1,1);
+   float w=Mathf.Max(20,width)*Mathf.Max(.1f,entry.scale)/bounds.width;
+   float h=w*entry.sprite.rect.height/entry.sprite.rect.width;
+   var rect=image.rectTransform;rect.anchorMin=rect.anchorMax=rect.pivot=Vector2.zero;
+   rect.sizeDelta=new Vector2(w,h);rect.localScale=Vector3.one;
+   rect.anchoredPosition=new Vector2(-bounds.x*w,-bounds.y*h-bottomOffset)+entry.offset;
+   image.preserveAspect=true;
+  }
+ }
+}

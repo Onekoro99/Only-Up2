@@ -1,0 +1,18 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+namespace GirlsFall.Dialogue {
+ [Serializable] public sealed class DialogueLine {
+  [Tooltip("空欄の場合は会話データの既定名")] public string characterName="";
+  [TextArea(3,8)] public string text;
+  public CharacterExpression expression;
+  [Min(0),Tooltip("0の場合は会話の既定速度（文字/秒）")] public float charactersPerSecond;
+  [Min(0)] public float delayBefore;
+ }
+ [CreateAssetMenu(fileName="Dialogue",menuName="Girls Fall/Dialogue/Conversation")]
+ public sealed class DialogueData:ScriptableObject {
+  public string defaultCharacterName="主人公";
+  [Min(1)] public float defaultCharactersPerSecond=32;
+  public List<DialogueLine> lines=new List<DialogueLine>();
+ }
+}

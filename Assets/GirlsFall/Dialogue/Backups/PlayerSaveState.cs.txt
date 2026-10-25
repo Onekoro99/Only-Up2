@@ -1,0 +1,39 @@
+using System;
+using UnityEngine;
+
+namespace GirlsFall
+{
+    [Serializable]
+    public sealed class PlayerSaveState
+    {
+        public int schemaVersion = 1;
+        public string sceneName = "GirlsFallGameplay";
+        public int stage = 1;
+        public long pv;
+        public double playSeconds;
+        public string savedAtUtc;
+        public Vector3 position;
+        public Quaternion rotation = Quaternion.identity;
+        public Vector3 horizontalVelocity;
+        public float verticalVelocity;
+        public bool grounded;
+        public bool falling;
+        public bool airborne;
+        public float departureHeight;
+        public float peakHeight;
+        public bool stageCompleted;
+
+        public bool IsValid()
+        {
+            return schemaVersion == 1 && sceneName == "GirlsFallGameplay" && stage >= 1 && pv >= 0 &&
+                playSeconds >= 0 && !double.IsNaN(playSeconds) && !double.IsInfinity(playSeconds) &&
+                Finite(position.x) && Finite(position.y) && Finite(position.z) &&
+                Finite(rotation.x) && Finite(rotation.y) && Finite(rotation.z) && Finite(rotation.w) &&
+                Finite(horizontalVelocity.x) && Finite(horizontalVelocity.y) && Finite(horizontalVelocity.z) &&
+                Finite(verticalVelocity) && Finite(departureHeight) && Finite(peakHeight) &&
+                rotation.x * rotation.x + rotation.y * rotation.y + rotation.z * rotation.z + rotation.w * rotation.w > 0.5f &&
+                !(falling && grounded);
+        }
+        private static bool Finite(float value) { return !float.IsNaN(value) && !float.IsInfinity(value); }
+    }
+}

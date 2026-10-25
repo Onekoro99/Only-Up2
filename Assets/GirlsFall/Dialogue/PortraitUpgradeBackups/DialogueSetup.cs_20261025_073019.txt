@@ -1,0 +1,90 @@
+using System;
+using System.IO;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
+using TMPro;
+using GirlsFall.Dialogue;
+namespace GirlsFall.Dialogue.Editor {
+ public static class DialogueSetup {
+  public const string Root="Assets/GirlsFall/Dialogue";
+  public const string GamePath="Assets/GirlsFall/Scenes/GirlsFallGameplay.unity";
+  static TMP_FontAsset font;static Sprite rounded;
+  static RectTransform Rect(string name,Transform parent,Vector2 min,Vector2 max,Vector2 pos,Vector2 size){
+   var r=new GameObject(name,typeof(RectTransform)).GetComponent<RectTransform>();r.SetParent(parent,false);r.anchorMin=min;r.anchorMax=max;r.pivot=min==max?min:new Vector2(.5f,.5f);r.anchoredPosition=pos;r.sizeDelta=size;return r;
+  }
+  static Image Panel(string name,Transform parent,Vector2 min,Vector2 max,Vector2 pos,Vector2 size,Color color){
+   var r=Rect(name,parent,min,max,pos,size);var i=r.gameObject.AddComponent<Image>();i.sprite=rounded;i.type=Image.Type.Sliced;i.color=color;i.raycastTarget=false;return i;
+  }
+  static TMP_Text Text(string name,Transform parent,string content,Vector2 min,Vector2 max,Vector2 pos,Vector2 size,int pixels){
+   var r=Rect(name,parent,min,max,pos,size);var t=r.gameObject.AddComponent<TextMeshProUGUI>();t.font=font;t.fontSize=pixels;t.text=content;t.color=new Color(.30f,.20f,.32f);t.raycastTarget=false;return t;
+  }
+  static Button Button(string name,Transform parent,Vector2 anchor,Vector2 pos,Vector2 size,string label){
+   var image=Panel(name,parent,anchor,anchor,pos,size,new Color(1,.88f,.94f,.98f));image.raycastTarget=true;
+   var b=image.gameObject.AddComponent<Button>();b.targetGraphic=image;
+   var colors=b.colors;colors.highlightedColor=new Color(.8f,.95f,1);colors.pressedColor=new Color(1,.65f,.8f);b.colors=colors;b.navigation=new Navigation{mode=Navigation.Mode.None};
+   var t=Text("Label",image.transform,label,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero,25);t.alignment=TextAlignmentOptions.Center;return b;
+  }
+  public static void Build(){
+   if(EditorApplication.isPlaying)throw new Exception("Stop play first");
+   Directory.CreateDirectory(Root+"/Data");Directory.CreateDirectory(Root+"/Prefabs");
+   foreach(string name in new[]{"normal","surprised","crying","angry","troubled"}){
+    string path="Assets/Art/ADV/Heroine/"+name+".png";if(!File.Exists(path))throw new FileNotFoundException(path);
+    var ti=(TextureImporter)AssetImporter.GetAtPath(path);var settings=new TextureImporterSettings();ti.ReadTextureSettings(settings);
+    settings.npotScale=TextureImporterNPOTScale.None;settings.textureType=TextureImporterType.Sprite;settings.spriteMode=1;settings.spriteMeshType=SpriteMeshType.FullRect;settings.alphaIsTransparency=true;
+    ti.SetTextureSettings(settings);ti.mipmapEnabled=false;ti.maxTextureSize=2048;ti.SaveAndReimport();
+   }
+   font=AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/GirlsFall/Fonts/GirlsFallJapaneseSDF.asset");
+   Directory.CreateDirectory(Root+"/UI");string roundedPath=Root+"/UI/DialogueRounded.png";if(!File.Exists(roundedPath))File.Copy("Assets/GirlsFall/UI/CandyRounded.png",roundedPath);AssetDatabase.ImportAsset(roundedPath);var ri=(TextureImporter)AssetImporter.GetAtPath(roundedPath);ri.textureType=TextureImporterType.Sprite;ri.spriteImportMode=SpriteImportMode.Single;ri.spriteBorder=new Vector4(16,16,16,16);ri.alphaIsTransparency=true;ri.mipmapEnabled=false;ri.npotScale=TextureImporterNPOTScale.None;ri.SaveAndReimport();rounded=AssetDatabase.LoadAssetAtPath<Sprite>(roundedPath);
+   if(!font||!rounded)throw new Exception("Existing UI assets missing");
+   string assetPath=Root+"/Data/OpeningDialogue.asset";
+   var data=AssetDatabase.LoadAssetAtPath<DialogueData>(assetPath);
+   if(!data){data=ScriptableObject.CreateInstance<DialogueData>();AssetDatabase.CreateAsset(data,assetPath);}
+   var root=new GameObject("DialogueCanvas",typeof(RectTransform),typeof(Canvas),typeof(CanvasScaler),typeof(GraphicRaycaster));
+   var canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=100;
+   var scaler=root.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1920,1080);scaler.matchWidthOrHeight=.5f;
+   var manager=root.AddComponent<DialogueManager>();var ui=root.AddComponent<DialogueUIController>();manager.ui=ui;manager.openingDialogue=data;
+   var presentation=Rect("Presentation",root.transform,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero);
+   ui.presentation=presentation.gameObject;ui.group=presentation.gameObject.AddComponent<CanvasGroup>();ui.group.alpha=0;
+   var adv=Rect("AdvanceClickArea",presentation,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero);
+   var click=adv.gameObject.AddComponent<Image>();click.color=Color.clear;ui.advanceButton=adv.gameObject.AddComponent<Button>();ui.advanceButton.transition=Selectable.Transition.None;ui.advanceButton.navigation=new Navigation{mode=Navigation.Mode.None};
+   var design=Rect("ResponsiveDesign",presentation,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(1920,1080));design.pivot=new Vector2(.5f,.5f);
+   var layout=presentation.gameObject.AddComponent<ResponsiveTitleLayout>();layout.design=design;
+   var frame=Rect("PortraitFrame",design,Vector2.zero,Vector2.zero,new Vector2(48,38),new Vector2(570,500));
+   frame.gameObject.AddComponent<RectMask2D>().padding=new Vector4(0,18,0,0);var pc=frame.gameObject.AddComponent<CharacterPortraitController>();ui.portraits=pc;
+   var old=Rect("PreviousExpression",frame,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero);pc.previousPortrait=old.gameObject.AddComponent<Image>();pc.previousPortrait.color=Color.clear;pc.previousPortrait.preserveAspect=true;pc.previousPortrait.raycastTarget=false;
+   var now=Rect("Expression",frame,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero);pc.portrait=now.gameObject.AddComponent<Image>();pc.portrait.preserveAspect=true;pc.portrait.raycastTarget=false;
+   pc.expressions=new PortraitExpression[5];string[] names={"normal","surprised","crying","angry","troubled"};
+   for(int i=0;i<5;i++)pc.expressions[i]=new PortraitExpression{expression=(CharacterExpression)i,sprite=AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/ADV/Heroine/"+names[i]+".png"),scale=1};
+   pc.portrait.sprite=pc.expressions[0].sprite;
+   var border=Panel("DialogueBorder",design,Vector2.zero,Vector2.zero,new Vector2(635,55),new Vector2(1230,315),new Color(.92f,.66f,.79f,.95f));
+   var shadow=border.gameObject.AddComponent<Shadow>();shadow.effectColor=new Color(.3f,.2f,.4f,.18f);shadow.effectDistance=new Vector2(0,-5);
+   var card=Panel("DialogueWindow",border.transform,Vector2.zero,Vector2.one,Vector2.zero,new Vector2(-10,-10),new Color(1,.98f,1,.94f));
+   var tag=Panel("NameRibbon",card.transform,new Vector2(0,1),new Vector2(0,1),new Vector2(28,-18),new Vector2(210,45),new Color(.81f,.94f,1,.98f));tag.rectTransform.pivot=new Vector2(0,1);
+   ui.speaker=Text("Speaker",tag.transform,"",Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero,27);ui.speaker.alignment=TextAlignmentOptions.Center;
+   ui.body=Text("Dialogue",card.transform,"",Vector2.zero,Vector2.one,new Vector2(0,-15),new Vector2(-72,-126),31);ui.body.alignment=TextAlignmentOptions.TopLeft;
+   ui.nextIcon=Text("Next",card.transform,"▼",new Vector2(1,0),new Vector2(1,0),new Vector2(-32,18),new Vector2(40,32),25);
+   Text("Help",card.transform,"クリック / Space / Enter",Vector2.zero,Vector2.zero,new Vector2(36,17),new Vector2(600,30),20);
+   ui.skipButton=Button("Skip",design,Vector2.one,new Vector2(-55,-45),new Vector2(180,52),"スキップ");ui.skipButton.GetComponent<RectTransform>().pivot=Vector2.one;
+   var err=Panel("SaveError",presentation,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(1000,440),new Color(1,.96f,.98f,1));err.rectTransform.pivot=new Vector2(.5f,.5f);err.raycastTarget=true;ui.errorPanel=err.gameObject;
+   ui.errorText=Text("ErrorMessage",err.transform,"",Vector2.zero,Vector2.one,new Vector2(0,45),new Vector2(-80,-130),27);ui.errorText.alignment=TextAlignmentOptions.Center;
+   ui.retryButton=Button("Retry",err.transform,new Vector2(.5f,0),new Vector2(-180,35),new Vector2(240,60),"保存を再試行");ui.retryButton.GetComponent<RectTransform>().pivot=new Vector2(.5f,0);
+   ui.titleButton=Button("ReturnTitle",err.transform,new Vector2(.5f,0),new Vector2(180,35),new Vector2(330,60),"保存せずタイトルへ");ui.titleButton.GetComponent<RectTransform>().pivot=new Vector2(.5f,0);
+   err.gameObject.SetActive(false);
+   string prefabPath=Root+"/Prefabs/DialogueCanvas.prefab";PrefabUtility.SaveAsPrefabAsset(root,prefabPath);UnityEngine.Object.DestroyImmediate(root);
+   var scene=EditorSceneManager.OpenScene(GamePath,OpenSceneMode.Additive);
+   var existing=scene.GetRootGameObjects().SelectMany(r=>r.GetComponentsInChildren<DialogueManager>(true)).FirstOrDefault();
+   if(!existing){
+    var go=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath),scene);existing=go.GetComponent<DialogueManager>();
+   }
+   existing.motor=scene.GetRootGameObjects().SelectMany(r=>r.GetComponentsInChildren<OnlyUpPrototype.PrototypePlayerMotor>(true)).First();
+   existing.autosave=existing.motor.GetComponent<AutoSaveController>();
+   existing.gameplayControls=scene.GetRootGameObjects().SelectMany(r=>r.GetComponentsInChildren<MonoBehaviour>(true)).Where(b=>b&&(b is OnlyUpPrototype.PrototypePlayerMotor||b is OnlyUpPrototype.ThirdPersonOrbitCamera||b is GameplayMenuController||b is OnlyUpPrototype.FallTracker||b is OnlyUpPrototype.StageRespawn||b.GetType().Name=="CharacterMovement")).Cast<Behaviour>().ToArray();
+   PrefabUtility.RecordPrefabInstancePropertyModifications(existing);EditorSceneManager.MarkSceneDirty(scene);EditorSceneManager.SaveScene(scene);EditorSceneManager.CloseScene(scene,true);AssetDatabase.SaveAssets();
+  }
+ }
+}

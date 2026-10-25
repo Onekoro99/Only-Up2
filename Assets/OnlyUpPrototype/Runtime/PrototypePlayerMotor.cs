@@ -6,12 +6,25 @@ namespace OnlyUpPrototype
     [RequireComponent(typeof(CharacterController), typeof(Animator))]
     public sealed class PrototypePlayerMotor : MonoBehaviour
     {
-        [SerializeField] private Transform movementCamera;
-        [SerializeField, Min(0f)] private float moveSpeed = 3.5f;
-        [SerializeField, Min(0f)] private float rotationSpeed = 540f;
-        [SerializeField, Min(0f)] private float jumpSpeed = 7f;
-        [SerializeField] private float gravity = -20f;
-        [SerializeField, Range(0f, 1f)] private float airControl = 0.75f;
+        [SerializeField]
+        [Header("移動の基準と操作性能")]
+        [Tooltip("WASDの移動方向を決めるカメラです。カメラの前方を水平面に投影してWの向きにします。未設定の場合は開始時にMain Cameraを探します。")]
+        private Transform movementCamera;
+        [SerializeField, Min(0f)]
+        [Tooltip("地上での移動速度（m/秒）です。大きいほど速く、小さいほどゆっくり移動します。初期値3.5です。ジャンプ中の横移動にも影響します。")]
+        private float moveSpeed = 3.5f;
+        [SerializeField, Min(0f)]
+        [Tooltip("移動方向へキャラクターが向き直る速さ（度/秒）です。大きいほど素早く、小さいほどゆっくり回転します。初期値540です。")]
+        private float rotationSpeed = 540f;
+        [SerializeField, Min(0f)]
+        [Tooltip("ジャンプ直後の上向き速度（m/秒）です。大きいほど高く跳び、小さいほど低くなります。実際の高さはGravityとの組み合わせで決まります。初期値7です。")]
+        private float jumpSpeed = 7f;
+        [SerializeField]
+        [Tooltip("上下速度へ加える重力加速度（m/秒²）です。負の値で、−30のように絶対値を大きくすると速く落ち、同じJump Speedでは低くなります。初期値−20です。")]
+        private float gravity = -20f;
+        [SerializeField, Range(0f, 1f)]
+        [Tooltip("空中で横移動速度を切り替える強さ（0〜1）です。大きいほど方向変更に素早く反応し、小さいほど空中で横速度を変えにくくなります。初期値0.75です。")]
+        private float airControl = 0.75f;
         private CharacterController controller;
         private Animator animator;
         private Vector3 horizontalVelocity;

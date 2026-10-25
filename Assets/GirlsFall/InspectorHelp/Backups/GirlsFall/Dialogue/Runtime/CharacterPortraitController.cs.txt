@@ -1,0 +1,46 @@
+using System;
+using UnityEngine;
+using UnityEngine.UI;
+namespace GirlsFall.Dialogue {
+ [Serializable] public sealed class PortraitExpression {
+  public CharacterExpression expression;
+  [Tooltip("この表情に使うSprite。差し替え後はInspectorのアルファ解析ボタンを押してください。")] public Sprite sprite;
+  [Tooltip("共通の配置に加える位置補正（基準解像度のUI単位）。Yを正にすると下端に隙間が生まれる場合があります。")] public Vector2 offset;
+  [Range(.5f,1.5f),Tooltip("この表情だけの拡大率。共通Scaleに乗算します。")] public float scale=1;
+  [HideInInspector] public Rect alphaBounds=new Rect(0,0,1,1);
+  [HideInInspector] public Sprite analyzedSprite;
+ }
+ public sealed class CharacterPortraitController:MonoBehaviour {
+  public Image portrait,previousPortrait;
+  public PortraitExpression[] expressions;
+  [Min(.01f),Tooltip("表情をクロスフェードする時間（秒）。")] public float fadeDuration=.16f;
+  [Tooltip("Play停止中に表示する表情。会話データには影響しません。")] public CharacterExpression previewExpression;
+  float elapsed;bool fading,hasImage,previousVisible;PortraitExpression currentEntry,previousEntry;
+  public Sprite CurrentSprite=>portrait?portrait.sprite:null;
+  public bool Show(CharacterExpression expression){
+   var entry=Find(expression);if(entry==null||!entry.sprite)return false;
+   previousVisible=hasImage;previousEntry=currentEntry;previousPortrait.sprite=portrait.sprite;
+   CopyRect(portrait.rectTransform,previousPortrait.rectTransform);
+   previousPortrait.color=new Color(1,1,1,hasImage?1:0);
+   currentEntry=entry;portrait.sprite=entry.sprite;portrait.preserveAspect=true;
+   ReapplyLayout();portrait.color=new Color(1,1,1,0);elapsed=0;fading=true;hasImage=true;return true;
+  }
+  public PortraitExpression Find(CharacterExpression expression){return expressions==null?null:Array.Find(expressions,e=>e!=null&&e.expression==expression);}
+  public void ReapplyLayout(){
+   var layout=GetComponent<CharacterPortraitLayout>();
+   if(layout){if(currentEntry!=null)layout.ApplyImage(portrait,currentEntry);if(previousEntry!=null)layout.ApplyImage(previousPortrait,previousEntry);}
+   else if(currentEntry!=null){portrait.rectTransform.anchoredPosition=currentEntry.offset;portrait.rectTransform.localScale=Vector3.one*currentEntry.scale;}
+  }
+  public void EditorPreview(){
+   var entry=Find(previewExpression);if(entry==null||!entry.sprite||!portrait||!previousPortrait)return;
+   currentEntry=entry;previousEntry=null;portrait.sprite=entry.sprite;portrait.color=Color.white;previousPortrait.color=Color.clear;ReapplyLayout();
+  }
+  static void CopyRect(RectTransform a,RectTransform b){b.anchorMin=a.anchorMin;b.anchorMax=a.anchorMax;b.pivot=a.pivot;b.sizeDelta=a.sizeDelta;b.anchoredPosition=a.anchoredPosition;b.localScale=a.localScale;}
+  public void Tick(float dt){
+   if(!fading)return;elapsed+=Mathf.Max(0,dt);float a=Mathf.Clamp01(elapsed/Mathf.Max(.01f,fadeDuration));
+   portrait.color=new Color(1,1,1,a);previousPortrait.color=previousVisible&&previousPortrait.sprite?new Color(1,1,1,1-a):Color.clear;
+   if(a>=1){fading=false;previousPortrait.color=Color.clear;}
+  }
+  void Update(){Tick(Time.unscaledDeltaTime);}
+ }
+}

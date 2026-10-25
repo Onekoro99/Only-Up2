@@ -3,10 +3,19 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController), typeof(Animator))]
 public sealed class CharacterMovement : MonoBehaviour
 {
-    [SerializeField, Min(0f)] private float moveSpeed = 3f;
-    [SerializeField, Min(0f)] private float rotationSpeed = 540f;
-    [SerializeField, Min(0f)] private float jumpSpeed = 6f;
-    [SerializeField] private float gravity = -20f;
+    [SerializeField, Min(0f)]
+    [Header("旧移動処理の設定")]
+    [Tooltip("旧移動スクリプトの水平移動速度（m/秒）です。大きいほど速くなります。初期値3で、コンポーネントが無効なら変更しても動作に影響しません。")]
+    private float moveSpeed = 3f;
+    [SerializeField, Min(0f)]
+    [Tooltip("旧移動スクリプトで進行方向へ向き直る速さ（度/秒）です。大きいほど素早く回転します。初期値540で、コンポーネントが無効の構成では適用されません。")]
+    private float rotationSpeed = 540f;
+    [SerializeField, Min(0f)]
+    [Tooltip("旧移動スクリプトのジャンプ初速（m/秒）です。大きいほど高く跳びます。初期値6で、現在使用中のPrototypePlayerMotorの値とは別です。")]
+    private float jumpSpeed = 6f;
+    [SerializeField]
+    [Tooltip("旧移動スクリプトの重力加速度（m/秒²）です。−30のように負の絶対値が大きいほど速く落ち、ジャンプも低くなります。初期値−20で、無効時は適用されません。")]
+    private float gravity = -20f;
     private CharacterController controller;
     private Animator animator;
     private float verticalVelocity;

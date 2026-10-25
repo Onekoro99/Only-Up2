@@ -9,12 +9,32 @@ namespace GirlsFall
 {
     public sealed class TitleMenuController : MonoBehaviour
     {
-        public Button continueButton, newGameButton, optionsButton, quitButton;
+        [Header("タイトルメニューのボタン")]
+        [Tooltip("最新の進行セーブを読み込むボタンです。セーブが存在しないときは操作できない状態になります。")]
+        public Button continueButton;
+        [Tooltip("新規ゲームを始めるボタンです。セーブがあれば上書き確認を表示し、なければ直接開始します。オプションは維持します。")]
+        public Button newGameButton;
+        [Tooltip("タイトル画面のオプションを開くボタンです。ゲーム中のオプションと同じ設定を使用します。")]
+        public Button optionsButton;
+        [Tooltip("オプション設定を保存して終了するボタンです。EditorではPlayを停止し、タイトルから進行データは上書きしません。")]
+        public Button quitButton;
+        [Header("新規開始の確認")]
+        [Tooltip("既存のセーブを新規ゲームで置き換える確認ダイアログです。はい・いいえのボタンを含みます。")]
         public GameObject confirmation;
-        public Button confirmYes, confirmNo;
+        [Tooltip("上書き確認の「はい」ボタンです。新規ゲームとして開始し、進行とADV完了フラグを初期化します。")]
+        public Button confirmYes;
+        [Tooltip("上書き確認の「いいえ」ボタンです。ダイアログを閉じ、現在の進行データを維持します。")]
+        public Button confirmNo;
+        [Tooltip("タイトルに表示するオプション画面の制御コンポーネントです。")]
         public OptionsMenuController options;
+        [Header("エラーと読込状況")]
+        [Tooltip("セーブ読込やScene遷移に失敗した場合に表示するエラーパネルです。")]
         public GameObject errorPanel;
-        public TMP_Text errorText, statusText;
+        [Tooltip("読込・設定保存・Scene遷移のエラー内容を表示するテキストです。")]
+        public TMP_Text errorText;
+        [Tooltip("ゲームSceneを読み込んでいる間の案内を表示するテキストです。")]
+        public TMP_Text statusText;
+        [Tooltip("エラーパネルだけを閉じてタイトル操作へ戻るボタンです。セーブデータは変更しません。")]
         public Button errorClose;
         public bool IsBusy { get; private set; }
         public string LastError { get; private set; }
@@ -42,7 +62,7 @@ namespace GirlsFall
             if (!SaveDataManager.Instance.TryLoad(out PlayerSaveState state, out string error)) { ShowError(error); RefreshContinue(); return; }
             GameSession.RequestContinue(state); StartCoroutine(LoadGameplay());
         }
-        public void ShowNewGameConfirmation() { if (IsBusy) return; Sound(); confirmation.SetActive(true); confirmNo.Select(); }
+        public void ShowNewGameConfirmation() { if (IsBusy) return; if (!SaveDataManager.Instance.HasSave) { ConfirmNewGame(); return; } Sound(); confirmation.SetActive(true); confirmNo.Select(); }
         public void ConfirmNewGame()
         {
             if (IsBusy) return; Sound(); confirmation.SetActive(false);
